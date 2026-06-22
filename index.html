@@ -416,7 +416,7 @@ function seed(){
   ];
   var y=t.slice(0,4);
   S.camps=[
-    {id:"c1",n:"Amigo Vox",desc:"Campanha de indicação",tp:"financeira",vis:"marista",st:y+"-01-01",en:y+"-12-31",gf:5000,gq:0,movs:[{id:uid(),tp:"entrada_fin",it:"",q:1,uv:200,p:"Indicação João",d:t,nt:""},{id:uid(),tp:"entrada_fin",it:"",q:1,uv:200,p:"Indicação Maria",d:t,nt:""}]},
+    {id:"c1",n:"Amigo Vox",desc:"Campanha de indicação — alunos indicam e ganham pontos para troca por brindes",tp:"financeira",vis:"marista",st:y+"-01-01",en:y+"-12-31",gf:5000,gq:0,loy:true,movs:[{id:uid(),tp:"entrada_fin",it:"",q:1,uv:200,p:"Indicação João",d:t,nt:""},{id:uid(),tp:"entrada_fin",it:"",q:1,uv:200,p:"Indicação Maria",d:t,nt:""}],prizes:[{id:uid(),name:"Óculos de sol",pts:100,qty:15},{id:uid(),name:"Garrafa de água",pts:60,qty:25},{id:uid(),name:"Mochila",pts:250,qty:8},{id:uid(),name:"Vinho",pts:200,qty:10}],ledger:[{id:uid(),type:"credito",referrer:"Bruno",referred:"Carlos",pts:100,d:t,nt:""},{id:uid(),type:"credito",referrer:"Ana",referred:"Pedro",pts:100,d:t,nt:""},{id:uid(),type:"credito",referrer:"Bruno",referred:"Julia",pts:100,d:t,nt:""}]},
     {id:"c2",n:"Amigo Vox",desc:"Campanha de indicação",tp:"financeira",vis:"flamboyant",st:y+"-01-01",en:y+"-12-31",gf:4000,gq:0,movs:[{id:uid(),tp:"entrada_fin",it:"",q:1,uv:200,p:"Indicação Pedro",d:t,nt:""}]},
     {id:"c3",n:"Copa Vox",desc:"Competição interna entre turmas",tp:"ambas",vis:"marista,flamboyant",st:y+"-06-01",en:y+"-07-31",gf:3000,gq:50,movs:[{id:uid(),tp:"entrada_fisica",it:"Troféu",q:3,uv:80,p:"Fornecedor",d:t,nt:""},{id:uid(),tp:"saida_fisica",it:"Camiseta Copa",q:20,uv:0,p:"Turmas",d:t,nt:""},{id:uid(),tp:"entrada_fin",it:"",q:1,uv:500,p:"Patrocinador",d:t,nt:"Patrocínio"}]}
   ];
@@ -707,6 +707,7 @@ function camFin(c,d){return(c.movs||[]).filter(function(m){return d==="in"?m.tp=
 function camQty(c,d){return(c.movs||[]).filter(function(m){return d==="in"?m.tp==="entrada_fisica":m.tp==="saida_fisica";}).reduce(function(s,m){return s+m.q;},0);}
 function rCamp(){
   if(!S.camps)S.camps=[];
+  S.camps.forEach(function(c){if(!c.prizes)c.prizes=[];if(!c.ledger)c.ledger=[];});
   document.getElementById("CAM_sub").textContent="Campanhas — "+(ACC[CU]?ACC[CU].n:"");
   var vis=S.camps.filter(campVis),filt=camF==="todas"?vis:vis.filter(function(c){return campSt(c)===camF;});
   var at=vis.filter(function(c){return campSt(c)==="andamento";}).length,rec=vis.reduce(function(s,c){return s+camFin(c,"in");},0),dep=vis.reduce(function(s,c){return s+camFin(c,"out");},0),its=vis.reduce(function(s,c){return s+camQty(c,"in");},0);
@@ -726,17 +727,18 @@ function rCamp(){
 
 function openCampM(eid){
   var c=eid?S.camps.find(function(x){return x.id===eid;}):null;
-  openM('<div class="mover" id="CAMO"><div class="modal mlg"><div class="mhdr"><span class="mtitle">'+(c?"Editar campanha":"Nova campanha")+'</span><button class="bico" id="CAM_close">✕</button></div><div class="mbody"><input type="hidden" id="CAM_eid" value="'+(eid||"")+'"><div class="fg"><label class="flbl">Nome da campanha</label><input class="inp" id="CAM_n" value="'+(c?c.n:"")+'" placeholder="Ex: Amigo Vox, Copa Vox..."></div><div class="fg"><label class="flbl">Descrição</label><input class="inp" id="CAM_d" value="'+(c?c.desc:"")+'" placeholder="Breve descrição"></div><div class="fr"><div class="fg"><label class="flbl">Tipo</label><select class="inp" id="CAM_tp"><option value="fisica"'+(c&&c.tp==="fisica"?" selected":"")+">🎁 Física</option><option value=\"financeira\""+(c&&c.tp==="financeira"?" selected":"")+">💰 Financeira</option><option value=\"ambas\""+(c&&c.tp==="ambas"?" selected":"")+">⚡ Ambas</option></select></div><div class=\"fg\"><label class=\"flbl\">Visibilidade</label><select class=\"inp\" id=\"CAM_vis\"><option value=\"marista\""+(c&&c.vis==="marista"?" selected":"")+">Apenas Marista</option><option value=\"flamboyant\""+(c&&c.vis==="flamboyant"?" selected":"")+">Apenas Flamboyant</option><option value=\"araguari\""+(c&&c.vis==="araguari"?" selected":"")+">Apenas Araguari</option><option value=\"marista,flamboyant\""+(c&&c.vis==="marista,flamboyant"?" selected":"")+">Marista + Flamboyant</option><option value=\"marista,araguari\""+(c&&c.vis==="marista,araguari"?" selected":"")+">Marista + Araguari</option><option value=\"flamboyant,araguari\""+(c&&c.vis==="flamboyant,araguari"?" selected":"")+">Flamboyant + Araguari</option><option value=\"todas\""+(c&&c.vis==="todas"?" selected":"")+">Todas</option></select></div></div><div class=\"fr\"><div class=\"fg\"><label class=\"flbl\">Data de início</label><input class=\"inp\" id=\"CAM_st\" type=\"date\" value=\""+(c?c.st:tod())+"\"></div><div class=\"fg\"><label class=\"flbl\">Data de encerramento</label><input class=\"inp\" id=\"CAM_en\" type=\"date\" value=\""+(c?c.en:tod())+"\"></div></div><div class=\"fr\"><div class=\"fg\"><label class=\"flbl\">Meta financeira (R$)</label><input class=\"inp\" id=\"CAM_gf\" type=\"number\" step=\"0.01\" min=\"0\" value=\""+(c?c.gf:"")+'" placeholder="0,00"></div><div class="fg"><label class="flbl">Meta de itens</label><input class="inp" id="CAM_gq" type="number" min="0" value="'+(c?c.gq:"")+'" placeholder="0"></div></div></div><div class="mftr"><button class="btn btn-s" id="CAM_cancel">Cancelar</button><button class="btn btn-p" id="CAM_save">'+ic("tag",14)+" Salvar campanha</button></div></div></div>");
+  openM('<div class="mover" id="CAMO"><div class="modal mlg"><div class="mhdr"><span class="mtitle">'+(c?"Editar campanha":"Nova campanha")+'</span><button class="bico" id="CAM_close">✕</button></div><div class="mbody"><input type="hidden" id="CAM_eid" value="'+(eid||"")+'"><div class="fg"><label class="flbl">Nome da campanha</label><input class="inp" id="CAM_n" value="'+(c?c.n:"")+'" placeholder="Ex: Amigo Vox, Copa Vox..."></div><div class="fg"><label class="flbl">Descrição</label><input class="inp" id="CAM_d" value="'+(c?c.desc:"")+'" placeholder="Breve descrição"></div><div class="fr"><div class="fg"><label class="flbl">Tipo</label><select class="inp" id="CAM_tp"><option value="fisica"'+(c&&c.tp==="fisica"?" selected":"")+">🎁 Física</option><option value=\"financeira\""+(c&&c.tp==="financeira"?" selected":"")+">💰 Financeira</option><option value=\"ambas\""+(c&&c.tp==="ambas"?" selected":"")+">⚡ Ambas</option></select></div><div class=\"fg\"><label class=\"flbl\">Visibilidade</label><select class=\"inp\" id=\"CAM_vis\"><option value=\"marista\""+(c&&c.vis==="marista"?" selected":"")+">Apenas Marista</option><option value=\"flamboyant\""+(c&&c.vis==="flamboyant"?" selected":"")+">Apenas Flamboyant</option><option value=\"araguari\""+(c&&c.vis==="araguari"?" selected":"")+">Apenas Araguari</option><option value=\"marista,flamboyant\""+(c&&c.vis==="marista,flamboyant"?" selected":"")+">Marista + Flamboyant</option><option value=\"marista,araguari\""+(c&&c.vis==="marista,araguari"?" selected":"")+">Marista + Araguari</option><option value=\"flamboyant,araguari\""+(c&&c.vis==="flamboyant,araguari"?" selected":"")+">Flamboyant + Araguari</option><option value=\"todas\""+(c&&c.vis==="todas"?" selected":"")+">Todas</option></select></div></div><div class=\"fr\"><div class=\"fg\"><label class=\"flbl\">Data de início</label><input class=\"inp\" id=\"CAM_st\" type=\"date\" value=\""+(c?c.st:tod())+"\"></div><div class=\"fg\"><label class=\"flbl\">Data de encerramento</label><input class=\"inp\" id=\"CAM_en\" type=\"date\" value=\""+(c?c.en:tod())+"\"></div></div><div class=\"fr\"><div class=\"fg\"><label class=\"flbl\">Meta financeira (R$)</label><input class=\"inp\" id=\"CAM_gf\" type=\"number\" step=\"0.01\" min=\"0\" value=\""+(c?c.gf:"")+'" placeholder="0,00"></div><div class="fg"><label class="flbl">Meta de itens</label><input class="inp" id="CAM_gq" type="number" min="0" value="'+(c?c.gq:"")+'" placeholder="0"></div></div><div class="fg" style="background:rgba(99,102,241,.06);border:1px solid rgba(99,102,241,.18);border-radius:10px;padding:12px 14px"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:600;color:var(--tx)"><input type="checkbox" id="CAM_loy" style="width:16px;height:16px;cursor:pointer"'+(c&&c.loy?' checked':'')+'> 🎁 Ativar sistema de fidelidade (pontos por indicação + resgate de brindes)</label><p style="font-size:11px;color:var(--txm);margin-top:6px;margin-left:24px">Use para campanhas como Amigo Vox: cada indicação que fecha matrícula gera pontos, que podem ser trocados por brindes do estoque.</p></div></div><div class="mftr"><button class="btn btn-s" id="CAM_cancel">Cancelar</button><button class="btn btn-p" id="CAM_save">'+ic("tag",14)+" Salvar campanha</button></div></div></div>");
   document.getElementById("CAM_close").addEventListener("click",closeM);
   document.getElementById("CAM_cancel").addEventListener("click",closeM);
   document.getElementById("CAMO").addEventListener("click",function(e){if(e.target===this)closeM();});
   document.getElementById("CAM_save").addEventListener("click",function(){
     var n=document.getElementById("CAM_n").value.trim();if(!n){toast("Informe o nome","er");return;}
-    var pay={n:n,desc:document.getElementById("CAM_d").value.trim(),tp:document.getElementById("CAM_tp").value,vis:document.getElementById("CAM_vis").value,st:document.getElementById("CAM_st").value,en:document.getElementById("CAM_en").value,gf:parseFloat(document.getElementById("CAM_gf").value)||0,gq:parseInt(document.getElementById("CAM_gq").value)||0};
+    var loy=document.getElementById("CAM_loy").checked;
+    var pay={n:n,desc:document.getElementById("CAM_d").value.trim(),tp:document.getElementById("CAM_tp").value,vis:document.getElementById("CAM_vis").value,st:document.getElementById("CAM_st").value,en:document.getElementById("CAM_en").value,gf:parseFloat(document.getElementById("CAM_gf").value)||0,gq:parseInt(document.getElementById("CAM_gq").value)||0,loy:loy};
     if(!S.camps)S.camps=[];
     var eid=document.getElementById("CAM_eid").value;
     if(eid){var idx=S.camps.findIndex(function(c){return c.id===eid;});S.camps[idx]=Object.assign({},S.camps[idx],pay);toast("Campanha atualizada!");}
-    else{S.camps.push(Object.assign({id:uid(),movs:[]},pay));toast("Campanha criada!");}
+    else{S.camps.push(Object.assign({id:uid(),movs:[],prizes:[],ledger:[]},pay));toast("Campanha criada!");}
     saveS();closeM();rCamp();
   });
 }
@@ -744,9 +746,12 @@ function openCampM(eid){
 function openCampDet(id){
   camDid=id;camDtab="resumo";
   var c=S.camps.find(function(x){return x.id===id;});if(!c)return;
+  if(!c.prizes)c.prizes=[];
+  if(!c.ledger)c.ledger=[];
   var st=campSt(c),stL={planejada:"Planejada",andamento:"Em andamento",encerrada:"Encerrada"}[st];
   var r=camFin(c,"in"),dep=camFin(c,"out"),sal=r-dep;
-  var tabs=["resumo","financeiro","fisico"],tabL=["📊 Resumo","💰 Financeiro","📦 Físico"];
+  var tabs=c.loy?["resumo","financeiro","fisico","premios"]:["resumo","financeiro","fisico"];
+  var tabL=c.loy?["📊 Resumo","💰 Financeiro","📦 Físico","🎁 Prêmios"]:["📊 Resumo","💰 Financeiro","📦 Físico"];
   var tabsH=tabs.map(function(t){return'<button class="ctab'+(camDtab===t?" on":"")+'" data-dt="'+t+'">'+tabL[tabs.indexOf(t)]+"</button>";}).join('');
   openM('<div class="mover" id="CDETO"><div class="modal mxl"><div class="mhdr"><div style="flex:1;min-width:0"><div class="mtitle">'+c.n+'</div><div style="font-size:11px;color:var(--txm);margin-top:3px"><span class="cst cs-'+st+'">'+stL+'</span> 📅 '+fD(c.st)+" → "+fD(c.en)+' 🏢 '+(c.vis==="todas"?"Todas":c.vis.split(",").map(function(u){return ACC[u]?ACC[u].n:u;}).join(" + "))+'</div></div><div style="display:flex;gap:6px"><button class="btn btn-s bsm" id="CDE_edit">'+ic("edit",13)+' Editar</button><button class="bico" id="CDE_close">✕</button></div></div><div style="padding:16px 22px;border-bottom:1px solid var(--bd);display:grid;grid-template-columns:repeat(3,1fr);gap:12px"><div><div style="font-size:10px;font-weight:700;color:var(--txm);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Receita</div><div style="font-size:22px;font-weight:800;color:var(--ok)">'+fC(r)+'</div></div><div><div style="font-size:10px;font-weight:700;color:var(--txm);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Despesas</div><div style="font-size:22px;font-weight:800;color:var(--er)">'+fC(dep)+'</div></div><div><div style="font-size:10px;font-weight:700;color:var(--txm);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Saldo</div><div style="font-size:22px;font-weight:800;color:'+(sal>=0?"var(--ok)":"var(--er)")+'">'+fC(sal)+'</div></div></div><div style="display:flex;border-bottom:1px solid var(--bd)" id="CDE_tabs">'+tabsH+'</div><div id="CDE_body" style="overflow-y:auto;max-height:calc(92vh - 280px);padding:16px 22px">'+rCampDetBody(c,camDtab)+'</div><div class="mftr"><button class="btn btn-s" id="CDE_closebtn">Fechar</button><button class="btn btn-p" id="CDE_mov">'+ic("zap",14)+' Registrar movimentação</button></div></div></div>');
   document.getElementById("CDE_close").addEventListener("click",closeM);
@@ -754,15 +759,81 @@ function openCampDet(id){
   document.getElementById("CDETO").addEventListener("click",function(e){if(e.target===this)closeM();});
   document.getElementById("CDE_edit").addEventListener("click",function(){closeM();openCampM(id);});
   document.getElementById("CDE_mov").addEventListener("click",function(){openCampMovM(id);});
-  document.querySelectorAll("#CDE_tabs .ctab").forEach(function(b){b.addEventListener("click",function(){camDtab=b.getAttribute("dt")||b.getAttribute("data-dt");document.querySelectorAll("#CDE_tabs .ctab").forEach(function(x){x.classList.toggle("on",x===b);});document.getElementById("CDE_body").innerHTML=rCampDetBody(c,camDtab);});});
+  document.querySelectorAll("#CDE_tabs .ctab").forEach(function(b){b.addEventListener("click",function(){camDtab=b.getAttribute("dt")||b.getAttribute("data-dt");document.querySelectorAll("#CDE_tabs .ctab").forEach(function(x){x.classList.toggle("on",x===b);});document.getElementById("CDE_body").innerHTML=rCampDetBody(c,camDtab);wireCampDetBody(c);});});
+  wireCampDetBody(c);
+}
+function wireCampDetBody(c){
+  var addBtn=document.getElementById("PZ_addbtn");
+  if(addBtn)addBtn.addEventListener("click",function(){openPrizeM(c.id);});
+  var addPtsBtn=document.getElementById("PZ_addpts");
+  if(addPtsBtn)addPtsBtn.addEventListener("click",function(){openAddPtsM(c.id);});
+  var redeemBtn=document.getElementById("PZ_redeem");
+  if(redeemBtn)redeemBtn.addEventListener("click",function(){openRedeemM(c.id);});
+  document.querySelectorAll("[data-pa]").forEach(function(b){
+    b.addEventListener("click",function(){
+      var a=b.getAttribute("data-pa"),pid=b.getAttribute("data-pid");
+      if(a==="edit")openPrizeM(c.id,pid);
+      else if(a==="del")delPrize(c.id,pid);
+    });
+  });
 }
 function rCampDetBody(c,tab){
+  if(!c.prizes)c.prizes=[];
+  if(!c.ledger)c.ledger=[];
   var movs=c.movs||[];var tL={entrada_fin:"💰 Receita",saida_fin:"💸 Despesa",entrada_fisica:"📦 Entrada física",saida_fisica:"📤 Saída física"};
   function mrow(m){var ip=m.tp==="entrada_fin"||m.tp==="entrada_fisica";var val=m.q*m.uv;return'<div class="cmrow"><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--tx)">'+(m.it||tL[m.tp])+'</div><div style="font-size:11px;color:var(--txm);margin-top:2px">'+tL[m.tp]+" · "+m.p+" · "+m.q+(m.tp.includes("fisica")?" un.":"")+" · "+fD(m.d)+(m.nt?" · <em>"+m.nt+"</em>":"")+'</div></div>'+(val>0?'<div style="font-size:13px;font-weight:700;color:'+(ip?"var(--ok)":"var(--er)")+'">'+( ip?"+":"-")+fC(val)+'</div>':'<span class="badge b-mu" style="font-size:10px">'+m.q+" un.</span>")+"</div>";}
+
+  if(tab==="premios")return rPremiosTab(c);
+
   var filt=tab==="financeiro"?movs.filter(function(m){return m.tp==="entrada_fin"||m.tp==="saida_fin";}):tab==="fisico"?movs.filter(function(m){return m.tp==="entrada_fisica"||m.tp==="saida_fisica";}):movs.slice(-5).reverse();
   var body='<div style="border:1px solid var(--bd);border-radius:14px;overflow:hidden">'+(filt.length?filt.reverse().map(mrow).join(''):'<div style="text-align:center;padding:32px;color:var(--txm);font-size:12px">Nenhuma movimentação</div>')+'</div>';
-  if(tab==="resumo"){var info='<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--bd);border-radius:14px;overflow:hidden;margin-bottom:14px"><div style="padding:12px 16px;border-bottom:1px solid var(--bd);border-right:1px solid var(--bd)"><div class="dkey">Tipo</div><div class="dval">'+{fisica:"🎁 Física",financeira:"💰 Financeira",ambas:"⚡ Ambas"}[c.tp]+'</div></div><div style="padding:12px 16px;border-bottom:1px solid var(--bd)"><div class="dkey">Visibilidade</div><div class="dval">'+(c.vis==="todas"?"Todas":c.vis.split(",").map(function(u){return ACC[u]?ACC[u].n:u;}).join(" + "))+'</div></div><div style="grid-column:1/-1;padding:12px 16px;border-bottom:1px solid var(--bd)"><div class="dkey">Descrição</div><div class="dval">'+(c.desc||"—")+'</div></div></div><h4 style="font-size:12px;font-weight:700;color:var(--txm);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">Últimas movimentações</h4>';body=info+body;}
+  if(tab==="resumo"){
+    var info='<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--bd);border-radius:14px;overflow:hidden;margin-bottom:14px"><div style="padding:12px 16px;border-bottom:1px solid var(--bd);border-right:1px solid var(--bd)"><div class="dkey">Tipo</div><div class="dval">'+{fisica:"🎁 Física",financeira:"💰 Financeira",ambas:"⚡ Ambas"}[c.tp]+'</div></div><div style="padding:12px 16px;border-bottom:1px solid var(--bd)"><div class="dkey">Visibilidade</div><div class="dval">'+(c.vis==="todas"?"Todas":c.vis.split(",").map(function(u){return ACC[u]?ACC[u].n:u;}).join(" + "))+'</div></div><div style="grid-column:1/-1;padding:12px 16px;border-bottom:1px solid var(--bd)"><div class="dkey">Descrição</div><div class="dval">'+(c.desc||"—")+'</div></div></div>';
+    if(c.loy){
+      var rk=campRanking(c).slice(0,3);
+      if(rk.length){
+        info+='<h4 style="font-size:12px;font-weight:700;color:var(--txm);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">🏆 Top indicadores</h4><div style="border:1px solid var(--bd);border-radius:14px;overflow:hidden;margin-bottom:14px">'+rk.map(function(r,i){return'<div style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--bd)"><div style="width:24px;height:24px;border-radius:50%;background:'+(i===0?'#F59E0B':i===1?'#94A3B8':'#A8714F')+'20;border:1px solid '+(i===0?'#F59E0B':i===1?'#94A3B8':'#A8714F')+'40;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:'+(i===0?'#F59E0B':i===1?'#94A3B8':'#A8714F')+';flex-shrink:0">'+(i+1)+'</div><div style="flex:1;font-size:13px;font-weight:600;color:var(--tx)">'+r.name+'</div><div style="font-size:12px;font-weight:700;color:var(--ac2)">'+r.balance+' pts</div></div>';}).join('')+'</div>';
+      }
+    }
+    info+='<h4 style="font-size:12px;font-weight:700;color:var(--txm);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">Últimas movimentações</h4>';
+    body=info+body;
+  }
   return body;
+}
+
+// ═══ SISTEMA DE FIDELIDADE (Amigo Vox) ═══
+function campRanking(c){
+  var bal={};
+  (c.ledger||[]).forEach(function(l){
+    if(!bal[l.referrer])bal[l.referrer]=0;
+    bal[l.referrer]+=l.pts;
+  });
+  return Object.keys(bal).map(function(name){return{name:name,balance:bal[name]};}).sort(function(a,b){return b.balance-a.balance;});
+}
+function campBalance(c,name){
+  return(c.ledger||[]).filter(function(l){return l.referrer===name;}).reduce(function(s,l){return s+l.pts;},0);
+}
+function rPremiosTab(c){
+  var rk=campRanking(c);
+  var prizesHtml=c.prizes.length===0?'<div style="text-align:center;padding:24px;color:var(--txm);font-size:12px">Nenhum brinde cadastrado ainda</div>':c.prizes.map(function(pz){
+    var low=pz.qty<=3;
+    return'<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--bd)"><div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13px;color:var(--tx)">'+pz.name+'</div><div style="font-size:11px;color:var(--txm);margin-top:2px">'+pz.pts+' pontos · estoque: <span style="color:'+(low?'var(--wn)':'var(--txs)')+';font-weight:600">'+pz.qty+' un.</span>'+(low?' ⚠':'')+'</div></div><div style="display:flex;gap:5px;flex-shrink:0"><button class="bico" data-pa="edit" data-pid="'+pz.id+'" style="color:var(--ac2)" title="Editar">'+ic("edit",13)+'</button><button class="bico" data-pa="del" data-pid="'+pz.id+'" style="color:var(--er)" title="Excluir">'+ic("trash",13)+'</button></div></div>';
+  }).join('');
+  var rankHtml=rk.length===0?'<div style="text-align:center;padding:20px;color:var(--txm);font-size:12px">Nenhuma indicação registrada ainda</div>':rk.map(function(r){return'<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 16px;border-bottom:1px solid var(--bd);font-size:13px"><span style="color:var(--tx);font-weight:500">'+r.name+'</span><span style="font-weight:700;color:var(--ac2)">'+r.balance+' pts</span></div>';}).join('');
+  var redeemHtml=(c.ledger||[]).filter(function(l){return l.type==="resgate";}).slice(-10).reverse().map(function(l){return'<div style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--bd);font-size:12px"><div class="txic out" style="width:28px;height:28px;border-radius:8px;flex-shrink:0">'+ic("gift",13)+'</div><div style="flex:1;min-width:0"><div style="font-weight:600;color:var(--tx)">'+l.prizeName+'</div><div style="color:var(--txm);margin-top:1px">Retirado por <strong style="color:var(--txs)">'+l.referrer+'</strong> · '+fD(l.d)+'</div></div><span class="badge b-mu" style="font-size:10px">-'+Math.abs(l.pts)+' pts</span></div>';}).join('');
+  if((c.ledger||[]).filter(function(l){return l.type==="resgate";}).length===0)redeemHtml='<div style="text-align:center;padding:16px;color:var(--txm);font-size:12px">Nenhum resgate ainda</div>';
+
+  var html='<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">'
+    +'<div><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><h4 style="font-size:12px;font-weight:700;color:var(--txm);text-transform:uppercase;letter-spacing:.07em">🎁 Estoque de brindes</h4><button class="btn btn-s bsm" id="PZ_addbtn">+ Brinde</button></div><div style="border:1px solid var(--bd);border-radius:14px;overflow:hidden">'+prizesHtml+'</div></div>'
+    +'<div><h4 style="font-size:12px;font-weight:700;color:var(--txm);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">🏆 Saldo de pontos por aluno</h4><div style="border:1px solid var(--bd);border-radius:14px;overflow:hidden">'+rankHtml+'</div></div>'
+    +'</div>'
+    +'<div style="display:flex;gap:8px;margin-bottom:16px">'
+    +'<button class="btn btn-p" id="PZ_addpts" style="flex:1;justify-content:center">'+ic("zap",14)+' Registrar indicação convertida (+100 pts)</button>'
+    +'<button class="btn btn-s" id="PZ_redeem" style="flex:1;justify-content:center">'+ic("gift",14)+' Resgatar brinde</button>'
+    +'</div>'
+    +'<h4 style="font-size:12px;font-weight:700;color:var(--txm);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">Histórico de resgates</h4>'
+    +'<div style="border:1px solid var(--bd);border-radius:14px;overflow:hidden">'+redeemHtml+'</div>';
+  return html;
 }
 function openCampMovM(cid){
   openM('<div class="mover" id="CMVO"><div class="modal"><div class="mhdr"><span class="mtitle">Registrar movimentação</span><button class="bico" id="CMV_close">✕</button></div><div class="mbody"><input type="hidden" id="CMV_cid" value="'+cid+'"><div class="fr"><div class="fg"><label class="flbl">Tipo</label><select class="inp" id="CMV_tp"><option value="entrada_fin">💰 Receita</option><option value="saida_fin">💸 Despesa</option><option value="entrada_fisica">📦 Entrada física</option><option value="saida_fisica">📤 Saída física</option></select></div><div class="fg"><label class="flbl">Data</label><input class="inp" id="CMV_d" type="date" value="'+tod()+'"></div></div><div id="CMV_fisf"><div class="fr"><div class="fg"><label class="flbl">Item / Descrição</label><input class="inp" id="CMV_it" placeholder="Ex: Camiseta, Brinde..."></div><div class="fg"><label class="flbl">Quantidade</label><input class="inp" id="CMV_q" type="number" min="1" value="1"></div></div></div><div class="fr"><div class="fg"><label class="flbl">Valor unitário (R$)</label><input class="inp" id="CMV_v" type="number" step="0.01" min="0" placeholder="0,00"></div><div class="fg"><label class="flbl">Responsável / Origem</label><input class="inp" id="CMV_p" placeholder="Ex: João, Turma A..."></div></div><div class="fg"><label class="flbl">Observação</label><input class="inp" id="CMV_nt" placeholder="Opcional"></div></div><div class="mftr"><button class="btn btn-s" id="CMV_cancel">Cancelar</button><button class="btn btn-p" id="CMV_save">'+ic("zap",14)+' Registrar</button></div></div></div>');
@@ -780,6 +851,99 @@ function openCampMovM(cid){
   });
 }
 function delCamp(id){if(!confirm("Excluir esta campanha?"))return;S.camps=S.camps.filter(function(c){return c.id!==id;});saveS();toast("Campanha excluída");rCamp();}
+
+// ═══ MODAL: Adicionar/editar brinde ═══
+function openPrizeM(cid,pid){
+  var c=S.camps.find(function(x){return x.id===cid;});if(!c)return;
+  if(!c.prizes)c.prizes=[];
+  var pz=pid?c.prizes.find(function(p){return p.id===pid;}):null;
+  openM('<div class="mover" id="PZO"><div class="modal"><div class="mhdr"><span class="mtitle">'+(pz?"Editar brinde":"Novo brinde")+'</span><button class="bico" id="PZ_close">✕</button></div><div class="mbody"><input type="hidden" id="PZ_cid" value="'+cid+'"><input type="hidden" id="PZ_pid" value="'+(pid||"")+'"><div class="fg"><label class="flbl">Nome do brinde</label><input class="inp" id="PZ_name" value="'+(pz?pz.name:"")+'" placeholder="Ex: Óculos de sol, Garrafa, Mochila, Vinho..."></div><div class="fr"><div class="fg"><label class="flbl">Custo em pontos</label><input class="inp" id="PZ_pts" type="number" min="1" value="'+(pz?pz.pts:"100")+'" placeholder="100"></div><div class="fg"><label class="flbl">Quantidade em estoque</label><input class="inp" id="PZ_qty" type="number" min="0" value="'+(pz?pz.qty:"")+'" placeholder="0"></div></div></div><div class="mftr"><button class="btn btn-s" id="PZ_cancel">Cancelar</button><button class="btn btn-p" id="PZ_save">'+ic("tag",14)+' Salvar brinde</button></div></div></div>');
+  document.getElementById("PZ_close").addEventListener("click",closeM);
+  document.getElementById("PZ_cancel").addEventListener("click",closeM);
+  document.getElementById("PZO").addEventListener("click",function(e){if(e.target===this)closeM();});
+  document.getElementById("PZ_save").addEventListener("click",function(){
+    var name=document.getElementById("PZ_name").value.trim();if(!name){toast("Informe o nome do brinde","er");return;}
+    var pts=parseInt(document.getElementById("PZ_pts").value)||0;if(pts<=0){toast("Informe o custo em pontos","er");return;}
+    var qty=parseInt(document.getElementById("PZ_qty").value)||0;
+    var epid=document.getElementById("PZ_pid").value;
+    if(epid){var idx=c.prizes.findIndex(function(p){return p.id===epid;});c.prizes[idx]={id:epid,name:name,pts:pts,qty:qty};toast("Brinde atualizado!");}
+    else{c.prizes.push({id:uid(),name:name,pts:pts,qty:qty});toast("Brinde adicionado!");}
+    saveS();closeM();openCampDet(cid);
+  });
+}
+function delPrize(cid,pid){
+  var c=S.camps.find(function(x){return x.id===cid;});if(!c)return;
+  if(!confirm("Excluir este brinde do estoque?"))return;
+  c.prizes=c.prizes.filter(function(p){return p.id!==pid;});
+  saveS();openCampDet(cid);toast("Brinde excluído");
+}
+
+// ═══ MODAL: Registrar indicação convertida (+pontos) ═══
+function openAddPtsM(cid){
+  openM('<div class="mover" id="APO"><div class="modal"><div class="mhdr"><span class="mtitle">🎯 Registrar indicação convertida</span><button class="bico" id="AP_close">✕</button></div><div class="mbody"><input type="hidden" id="AP_cid" value="'+cid+'"><div class="ibox" style="margin-bottom:16px">'+ic("zap",13,"var(--ac2)")+' <span>Quando uma indicação fecha matrícula, o aluno que indicou ganha pontos para trocar por brindes.</span></div><div class="fg"><label class="flbl">Aluno que indicou (quem recebe os pontos)</label><input class="inp" id="AP_referrer" placeholder="Ex: Bruno"></div><div class="fg"><label class="flbl">Aluno indicado (quem fechou a matrícula)</label><input class="inp" id="AP_referred" placeholder="Ex: Carlos"></div><div class="fr"><div class="fg"><label class="flbl">Pontos a conceder</label><input class="inp" id="AP_pts" type="number" min="1" value="100"></div><div class="fg"><label class="flbl">Data</label><input class="inp" id="AP_d" type="date" value="'+tod()+'"></div></div><div class="fg"><label class="flbl">Observação</label><input class="inp" id="AP_nt" placeholder="Opcional"></div></div><div class="mftr"><button class="btn btn-s" id="AP_cancel">Cancelar</button><button class="btn btn-p" id="AP_save">'+ic("zap",14)+' Conceder pontos</button></div></div></div>');
+  document.getElementById("AP_close").addEventListener("click",closeM);
+  document.getElementById("AP_cancel").addEventListener("click",closeM);
+  document.getElementById("APO").addEventListener("click",function(e){if(e.target===this)closeM();});
+  document.getElementById("AP_save").addEventListener("click",function(){
+    var cid2=document.getElementById("AP_cid").value,c=S.camps.find(function(x){return x.id===cid2;});if(!c)return;
+    var referrer=document.getElementById("AP_referrer").value.trim();
+    var referred=document.getElementById("AP_referred").value.trim();
+    var pts=parseInt(document.getElementById("AP_pts").value)||0;
+    var d=document.getElementById("AP_d").value;
+    var nt=document.getElementById("AP_nt").value.trim();
+    if(!referrer){toast("Informe quem indicou","er");return;}
+    if(!referred){toast("Informe quem foi indicado","er");return;}
+    if(pts<=0){toast("Informe os pontos","er");return;}
+    if(!c.ledger)c.ledger=[];
+    c.ledger.push({id:uid(),type:"credito",referrer:referrer,referred:referred,pts:pts,d:d,nt:nt});
+    saveS();closeM();toast(referrer+" ganhou "+pts+" pontos!");openCampDet(cid2);
+  });
+}
+
+// ═══ MODAL: Resgatar brinde ═══
+function openRedeemM(cid){
+  var c=S.camps.find(function(x){return x.id===cid;});if(!c)return;
+  if(!c.prizes||!c.prizes.length){toast("Cadastre um brinde no estoque primeiro","er");return;}
+  var rk=campRanking(c);
+  if(!rk.length){toast("Nenhum aluno com pontos ainda","er");return;}
+  var studentOpts=rk.map(function(r){return'<option value="'+r.name+'">'+r.name+" — "+r.balance+" pts</option>";}).join('');
+  var prizeOpts=c.prizes.map(function(p){return'<option value="'+p.id+'" data-pts="'+p.pts+'" data-qty="'+p.qty+'">'+p.name+" — "+p.pts+" pts (estoque: "+p.qty+")</option>";}).join('');
+  openM('<div class="mover" id="RDO"><div class="modal"><div class="mhdr"><span class="mtitle">🎁 Resgatar brinde</span><button class="bico" id="RD_close">✕</button></div><div class="mbody"><input type="hidden" id="RD_cid" value="'+cid+'"><div class="fg"><label class="flbl">Aluno que vai resgatar</label><select class="inp" id="RD_student">'+studentOpts+'</select></div><div class="fg"><label class="flbl">Brinde</label><select class="inp" id="RD_prize">'+prizeOpts+'</select></div><div class="fg"><label class="flbl">Data da retirada</label><input class="inp" id="RD_d" type="date" value="'+tod()+'"></div><div id="RD_preview" style="margin-top:4px"></div></div><div class="mftr"><button class="btn btn-s" id="RD_cancel">Cancelar</button><button class="btn btn-p" id="RD_save" style="background:var(--ok)">'+ic("gift",14)+' Confirmar retirada</button></div></div></div>');
+  document.getElementById("RD_close").addEventListener("click",closeM);
+  document.getElementById("RD_cancel").addEventListener("click",closeM);
+  document.getElementById("RDO").addEventListener("click",function(e){if(e.target===this)closeM();});
+  function updPrev(){
+    var sName=document.getElementById("RD_student").value;
+    var pSel=document.getElementById("RD_prize");
+    var opt=pSel.options[pSel.selectedIndex];
+    var pPts=parseInt(opt.getAttribute("data-pts"))||0;
+    var pQty=parseInt(opt.getAttribute("data-qty"))||0;
+    var bal=campBalance(c,sName);
+    var box=document.getElementById("RD_preview");
+    var enough=bal>=pPts;
+    var hasStock=pQty>0;
+    box.innerHTML='<div style="background:'+(enough&&hasStock?"rgba(16,185,129,.07)":"rgba(239,68,68,.07)")+';border:1px solid '+(enough&&hasStock?"rgba(16,185,129,.2)":"rgba(239,68,68,.2)")+';border-radius:10px;padding:12px;font-size:12px">Saldo atual de <strong>'+sName+'</strong>: <strong style="color:'+(enough?"var(--ok)":"var(--er)")+'">'+bal+' pts</strong> · Custo: <strong>'+pPts+' pts</strong>'+(!enough?'<br><span style="color:var(--er)">⚠ Saldo insuficiente</span>':'')+(!hasStock?'<br><span style="color:var(--er)">⚠ Sem estoque deste brinde</span>':'')+'</div>';
+  }
+  document.getElementById("RD_student").addEventListener("change",updPrev);
+  document.getElementById("RD_prize").addEventListener("change",updPrev);
+  updPrev();
+  document.getElementById("RD_save").addEventListener("click",function(){
+    var cid2=document.getElementById("RD_cid").value,c2=S.camps.find(function(x){return x.id===cid2;});if(!c2)return;
+    var sName=document.getElementById("RD_student").value;
+    var pSel=document.getElementById("RD_prize");
+    var pid=pSel.value;
+    var prize=c2.prizes.find(function(p){return p.id===pid;});
+    if(!prize){toast("Brinde não encontrado","er");return;}
+    var bal=campBalance(c2,sName);
+    if(bal<prize.pts){toast("Saldo insuficiente. Disponível: "+bal+" pts","er");return;}
+    if(prize.qty<=0){toast("Sem estoque deste brinde","er");return;}
+    var d=document.getElementById("RD_d").value;
+    prize.qty-=1;
+    if(!c2.ledger)c2.ledger=[];
+    c2.ledger.push({id:uid(),type:"resgate",referrer:sName,prizeId:pid,prizeName:prize.name,pts:-prize.pts,d:d,nt:""});
+    saveS();closeM();toast(sName+" retirou: "+prize.name+"!");openCampDet(cid2);
+  });
+}
 
 // ═══ HELP ═══
 var hTab="venda";
