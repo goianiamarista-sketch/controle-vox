@@ -6,6 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Controle Vox</title>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 [data-theme="dark"]{--bg:#09090F;--sf:#111118;--sf2:#16161F;--bd:#1E1E2E;--bd2:#2A2A3E;--ac:#6366F1;--ac2:#818CF8;--tx:#F1F5F9;--txs:#94A3B8;--txm:#64748B;--ok:#10B981;--wn:#F59E0B;--er:#EF4444;--mbg:rgba(17,17,24,.98);--ovl:rgba(0,0,0,.75);--rh:rgba(22,22,31,.5)}
@@ -376,29 +377,99 @@ function gC(id){return S.cats.find(function(c){return c.id===id;});}
 function gT(id){return S.txns.find(function(t){return t.id===id;});}
 function gCP(s){return S.cp[s]||{cost:0,sale:0};}
 
-function loadS(){
+// ═══ SUPABASE CONNECTION ═══
+var SB_URL="https://bkbepvticjzrejmbsgxp.supabase.co";
+var SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJrYmVwdnRpY2p6cmVqbWJzZ3hwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyODEzODEsImV4cCI6MjA5Nzg1NzM4MX0.OqrjDORS8VChXihJ_wLc4PPuPaKoWgGO3hNaHs7uMNU";
+var sb=window.supabase.createClient(SB_URL,SB_KEY);
+
+// converte o registro do nosso "item" (campos curtos: n,cid,v,cost,sale,sc)
+// para o formato de colunas do banco (name,category_id,variants,cost,sale,subcat)
+function itemToRow(i){return{id:i.id,unit_id:CU,category_id:i.cid||null,name:i.n,variants:i.v,cost:i.cost,sale:i.sale,subcat:i.sc||null,created_at:i.at||tod()};}
+function rowToItem(r){return{id:r.id,cid:r.category_id,n:r.name,v:r.variants,cost:Number(r.cost),sale:Number(r.sale),sc:r.subcat,at:r.created_at};}
+function catToRow(c){return{id:c.id,unit_id:CU,name:c.n,icon:c.ic,color:c.cl};}
+function rowToCat(r){return{id:r.id,n:r.name,ic:r.icon,cl:r.color};}
+function txToRow(t){return{id:t.id,unit_id:CU,item_id:t.iid,type:t.tp,variant_label:t.vl,qty:t.q,unit_value:t.uv,person:t.p,date:t.d,note:t.nt};}
+function rowToTx(r){return{id:r.id,iid:r.item_id,tp:r.type,vl:r.variant_label,q:r.qty,uv:Number(r.unit_value),p:r.person,d:r.date,nt:r.note};}
+function mmToRow(m){return{id:m.id,unit_id:CU,type:m.tp,course:m.c,qty:m.q,unit_value:m.uv,person:m.p,date:m.d,note:m.nt};}
+function rowToMm(r){return{id:r.id,tp:r.type,c:r.course,q:r.qty,uv:Number(r.unit_value),p:r.person,d:r.date,nt:r.note};}
+function campToRow(c){return{id:c.id,name:c.n,description:c.desc,type:c.tp,visibility:c.vis,start_date:c.st,end_date:c.en,goal_financial:c.gf,goal_qty:c.gq,loyalty_enabled:!!c.loy};}
+function rowToCamp(r){return{id:r.id,n:r.name,desc:r.description,tp:r.type,vis:r.visibility,st:r.start_date,en:r.end_date,gf:Number(r.goal_financial),gq:Number(r.goal_qty),loy:r.loyalty_enabled,movs:[],prizes:[],ledger:[]};}
+function cmovToRow(cid,m){return{id:m.id,campaign_id:cid,type:m.tp,item_name:m.it,qty:m.q,unit_value:m.uv,person:m.p,date:m.d,note:m.nt};}
+function rowToCmov(r){return{id:r.id,tp:r.type,it:r.item_name,q:r.qty,uv:Number(r.unit_value),p:r.person,d:r.date,nt:r.note};}
+function pzToRow(cid,p){return{id:p.id,campaign_id:cid,name:p.name,points:p.pts,qty:p.qty};}
+function rowToPz(r){return{id:r.id,name:r.name,pts:r.points,qty:r.qty};}
+function ldToRow(cid,l){return{id:l.id,campaign_id:cid,type:l.type,referrer:l.referrer,referred:l.referred||null,prize_id:l.prizeId||null,prize_name:l.prizeName||null,points:l.pts,date:l.d,note:l.nt||null};}
+function rowToLd(r){return{id:r.id,type:r.type,referrer:r.referrer,referred:r.referred,prizeId:r.prize_id,prizeName:r.prize_name,pts:Number(r.points),d:r.date,nt:r.note};}
+
+// ═══ LOAD: busca tudo do Supabase para esta unidade ═══
+async function loadS(){
   try{
-    var d=JSON.parse(localStorage.getItem(sk())||"{}");
-    S.cats=d.cats||[];S.items=d.items||[];S.txns=d.txns||[];
-    S.cp=d.cp||{};S.mm=d.mm||[];S.camps=d.camps||[];
-  }catch(e){S={cats:[],items:[],txns:[],cp:{},mm:[],camps:[]};}
-}
-function saveS(){
-  localStorage.setItem(sk(),JSON.stringify({cats:S.cats,items:S.items,txns:S.txns,cp:S.cp,mm:S.mm,camps:S.camps}));
+    var catsR=await sb.from("categories").select("*").eq("unit_id",CU);
+    var itemsR=await sb.from("items").select("*").eq("unit_id",CU).order("created_at",{ascending:false});
+    var txR=await sb.from("transactions").select("*").eq("unit_id",CU);
+    var cpR=await sb.from("course_prices").select("*").eq("unit_id",CU);
+    var mmR=await sb.from("material_movs").select("*").eq("unit_id",CU);
+    var campR=await sb.from("campaigns").select("*").or("visibility.eq.todas,visibility.eq."+CU+",visibility.ilike.%"+CU+"%");
+
+    S.cats=(catsR.data||[]).map(rowToCat);
+    S.items=(itemsR.data||[]).map(rowToItem);
+    S.txns=(txR.data||[]).map(rowToTx);
+    S.cp={};(cpR.data||[]).forEach(function(r){S.cp[r.course]={cost:Number(r.cost),sale:Number(r.sale)};});
+    S.mm=(mmR.data||[]).map(rowToMm);
+    S.camps=(campR.data||[]).map(rowToCamp);
+
+    // para cada campanha, busca movs/prizes/ledger
+    for(var i=0;i<S.camps.length;i++){
+      var c=S.camps[i];
+      var movsR=await sb.from("campaign_movs").select("*").eq("campaign_id",c.id);
+      var pzR=await sb.from("campaign_prizes").select("*").eq("campaign_id",c.id);
+      var ldR=await sb.from("campaign_ledger").select("*").eq("campaign_id",c.id);
+      c.movs=(movsR.data||[]).map(rowToCmov);
+      c.prizes=(pzR.data||[]).map(rowToPz);
+      c.ledger=(ldR.data||[]).map(rowToLd);
+    }
+  }catch(e){
+    console.error("Erro ao carregar dados:",e);
+    toast("Erro ao conectar com o banco de dados","er");
+    S={cats:[],items:[],txns:[],cp:{},mm:[],camps:[]};
+  }
 }
 
-function seed(){
-  if(S.items.length>0)return;
+// ═══ SAVE: as funções abaixo gravam direto no Supabase no momento de cada ação ═══
+// (loadS recarrega tudo; estas funções de "upsert" são chamadas dentro de cada ação específica)
+async function dbUpsertItem(i){try{await sb.from("items").upsert(itemToRow(i));}catch(e){console.error(e);toast("Erro ao salvar item","er");}}
+async function dbDeleteItem(id){try{await sb.from("items").delete().eq("id",id);}catch(e){console.error(e);}}
+async function dbUpsertCat(c){try{await sb.from("categories").upsert(catToRow(c));}catch(e){console.error(e);toast("Erro ao salvar categoria","er");}}
+async function dbDeleteCat(id){try{await sb.from("categories").delete().eq("id",id);}catch(e){console.error(e);}}
+async function dbInsertTx(t){try{await sb.from("transactions").insert(txToRow(t));}catch(e){console.error(e);toast("Erro ao salvar movimentação","er");}}
+async function dbUpdateTx(t){try{await sb.from("transactions").update(txToRow(t)).eq("id",t.id);}catch(e){console.error(e);}}
+async function dbDeleteTx(id){try{await sb.from("transactions").delete().eq("id",id);}catch(e){console.error(e);}}
+async function dbUpsertCP(course,p){try{await sb.from("course_prices").upsert({unit_id:CU,course:course,cost:p.cost,sale:p.sale},{onConflict:"unit_id,course"});}catch(e){console.error(e);}}
+async function dbInsertMM(m){try{await sb.from("material_movs").insert(mmToRow(m));}catch(e){console.error(e);toast("Erro ao salvar","er");}}
+async function dbUpsertCamp(c){try{await sb.from("campaigns").upsert(campToRow(c));}catch(e){console.error(e);toast("Erro ao salvar campanha","er");}}
+async function dbDeleteCamp(id){try{await sb.from("campaigns").delete().eq("id",id);}catch(e){console.error(e);}}
+async function dbInsertCmov(cid,m){try{await sb.from("campaign_movs").insert(cmovToRow(cid,m));}catch(e){console.error(e);}}
+async function dbUpsertPrize(cid,p){try{await sb.from("campaign_prizes").upsert(pzToRow(cid,p));}catch(e){console.error(e);}}
+async function dbDeletePrize(id){try{await sb.from("campaign_prizes").delete().eq("id",id);}catch(e){console.error(e);}}
+async function dbInsertLedger(cid,l){try{await sb.from("campaign_ledger").insert(ldToRow(cid,l));}catch(e){console.error(e);}}
+async function dbUpdatePrizeQty(id,qty){try{await sb.from("campaign_prizes").update({qty:qty}).eq("id",id);}catch(e){console.error(e);}}
+async function dbUpdateItemVariants(id,variants){try{await sb.from("items").update({variants:variants}).eq("id",id);}catch(e){console.error(e);}}
+
+// saveS agora só serve como "marcador" — o salvamento real acontece via dbXxx() em cada ação.
+// mantido para compatibilidade com código existente que chama saveS() após mudanças locais.
+function saveS(){ /* no-op: gravação feita diretamente no Supabase a cada ação */ }
+
+async function seedToSupabase(){
   var c1=uid(),c2=uid(),c3=uid(),c4=uid();
-  S.cats=[{id:c1,n:"Camisetas",ic:"shirt",cl:"#6366F1"},{id:c2,n:"Bonés",ic:"archive",cl:"#10B981"},{id:c3,n:"Vinhos",ic:"wine",cl:"#EF4444"},{id:c4,n:"Material Didático",ic:"book",cl:"#F59E0B"}];
+  var cats=[{id:c1,n:"Camisetas",ic:"shirt",cl:"#6366F1"},{id:c2,n:"Bonés",ic:"archive",cl:"#10B981"},{id:c3,n:"Vinhos",ic:"wine",cl:"#EF4444"},{id:c4,n:"Material Didático",ic:"book",cl:"#F59E0B"}];
   var i1=uid(),i2=uid(),i3=uid(),i4=uid(),t=tod();
-  S.items=[
+  var items=[
     {id:i1,cid:c1,n:"Camiseta Básica",v:[{l:"P",q:5},{l:"M",q:5},{l:"G",q:18}],cost:25,sale:60,at:t},
     {id:i2,cid:c2,n:"Boné Snapback",v:[{l:"Único",q:8}],cost:30,sale:75,at:t},
     {id:i3,cid:c3,n:"Vinho Malbec 750ml",v:[{l:"Garrafa",q:12}],cost:45,sale:110,at:t},
     {id:i4,cid:c4,n:"Apostila Academy 3.1",v:[{l:"Unidade",q:25}],cost:15,sale:40,sc:"Academy 3.1",at:t}
   ];
-  S.txns=[
+  var txns=[
     {id:uid(),tp:"in",iid:i1,vl:"G",q:18,uv:25,p:"Fornecedor ABC",d:t,nt:""},
     {id:uid(),tp:"out",iid:i1,vl:"G",q:2,uv:60,p:"João Silva",d:t,nt:"Pagamento à vista"},
     {id:uid(),tp:"in",iid:i2,vl:"Único",q:8,uv:30,p:"Fornecedor XYZ",d:t,nt:""},
@@ -407,20 +478,45 @@ function seed(){
     {id:uid(),tp:"in",iid:i4,vl:"Unidade",q:30,uv:15,p:"Editora Vox",d:t,nt:""},
     {id:uid(),tp:"out",iid:i4,vl:"Unidade",q:5,uv:40,p:"Turma Academy",d:t,nt:""}
   ];
-  SC.forEach(function(s){S.cp[s]={cost:0,sale:0};});
-  S.mm=[
+  var mm=[
     {id:uid(),tp:"compra",c:"Academy 3.1",q:30,uv:15,p:"Vox2You Franqueadora",d:t,nt:""},
     {id:uid(),tp:"dist",c:"Academy 3.1",q:5,uv:0,p:"Turma A",d:t,nt:""},
     {id:uid(),tp:"compra",c:"Intensivox",q:20,uv:15,p:"Vox2You Franqueadora",d:t,nt:""},
     {id:uid(),tp:"dist",c:"Intensivox",q:3,uv:0,p:"Turma B",d:t,nt:""}
   ];
-  var y=t.slice(0,4);
-  S.camps=[
-    {id:"c1",n:"Amigo Vox",desc:"Campanha de indicação — alunos indicam e ganham pontos para troca por brindes",tp:"financeira",vis:"marista",st:y+"-01-01",en:y+"-12-31",gf:5000,gq:0,loy:true,movs:[{id:uid(),tp:"entrada_fin",it:"",q:1,uv:200,p:"Indicação João",d:t,nt:""},{id:uid(),tp:"entrada_fin",it:"",q:1,uv:200,p:"Indicação Maria",d:t,nt:""}],prizes:[{id:uid(),name:"Óculos de sol",pts:100,qty:15},{id:uid(),name:"Garrafa de água",pts:60,qty:25},{id:uid(),name:"Mochila",pts:250,qty:8},{id:uid(),name:"Vinho",pts:200,qty:10}],ledger:[{id:uid(),type:"credito",referrer:"Bruno",referred:"Carlos",pts:100,d:t,nt:""},{id:uid(),type:"credito",referrer:"Ana",referred:"Pedro",pts:100,d:t,nt:""},{id:uid(),type:"credito",referrer:"Bruno",referred:"Julia",pts:100,d:t,nt:""}]},
-    {id:"c2",n:"Amigo Vox",desc:"Campanha de indicação",tp:"financeira",vis:"flamboyant",st:y+"-01-01",en:y+"-12-31",gf:4000,gq:0,movs:[{id:uid(),tp:"entrada_fin",it:"",q:1,uv:200,p:"Indicação Pedro",d:t,nt:""}]},
-    {id:"c3",n:"Copa Vox",desc:"Competição interna entre turmas",tp:"ambas",vis:"marista,flamboyant",st:y+"-06-01",en:y+"-07-31",gf:3000,gq:50,movs:[{id:uid(),tp:"entrada_fisica",it:"Troféu",q:3,uv:80,p:"Fornecedor",d:t,nt:""},{id:uid(),tp:"saida_fisica",it:"Camiseta Copa",q:20,uv:0,p:"Turmas",d:t,nt:""},{id:uid(),tp:"entrada_fin",it:"",q:1,uv:500,p:"Patrocinador",d:t,nt:"Patrocínio"}]}
-  ];
-  saveS();
+  for(var i=0;i<cats.length;i++)await dbUpsertCat(cats[i]);
+  for(var i=0;i<items.length;i++)await dbUpsertItem(items[i]);
+  for(var i=0;i<txns.length;i++)await dbInsertTx(txns[i]);
+  for(var i=0;i<mm.length;i++)await dbInsertMM(mm[i]);
+
+  S.cats=cats;S.items=items;S.txns=txns;S.mm=mm;
+  SC.forEach(function(s){S.cp[s]={cost:0,sale:0};});
+
+  // Campanhas só são criadas uma vez (são compartilhadas entre unidades via "visibility")
+  var existingCamps=await sb.from("campaigns").select("id").limit(1);
+  if(!existingCamps.data||existingCamps.data.length===0){
+    var y=t.slice(0,4);
+    var camp1={id:uid(),n:"Amigo Vox",desc:"Campanha de indicação — alunos indicam e ganham pontos para troca por brindes",tp:"financeira",vis:"marista",st:y+"-01-01",en:y+"-12-31",gf:5000,gq:0,loy:true};
+    var camp2={id:uid(),n:"Amigo Vox",desc:"Campanha de indicação",tp:"financeira",vis:"flamboyant",st:y+"-01-01",en:y+"-12-31",gf:4000,gq:0,loy:false};
+    var camp3={id:uid(),n:"Copa Vox",desc:"Competição interna entre turmas",tp:"ambas",vis:"marista,flamboyant",st:y+"-06-01",en:y+"-07-31",gf:3000,gq:50,loy:false};
+    await dbUpsertCamp(camp1);await dbUpsertCamp(camp2);await dbUpsertCamp(camp3);
+    await dbInsertCmov(camp1.id,{id:uid(),tp:"entrada_fin",it:"",q:1,uv:200,p:"Indicação João",d:t,nt:""});
+    await dbInsertCmov(camp1.id,{id:uid(),tp:"entrada_fin",it:"",q:1,uv:200,p:"Indicação Maria",d:t,nt:""});
+    await dbInsertCmov(camp2.id,{id:uid(),tp:"entrada_fin",it:"",q:1,uv:200,p:"Indicação Pedro",d:t,nt:""});
+    await dbInsertCmov(camp3.id,{id:uid(),tp:"entrada_fisica",it:"Troféu",q:3,uv:80,p:"Fornecedor",d:t,nt:""});
+    await dbInsertCmov(camp3.id,{id:uid(),tp:"saida_fisica",it:"Camiseta Copa",q:20,uv:0,p:"Turmas",d:t,nt:""});
+    await dbInsertCmov(camp3.id,{id:uid(),tp:"entrada_fin",it:"",q:1,uv:500,p:"Patrocinador",d:t,nt:"Patrocínio"});
+    var pz1={id:uid(),name:"Óculos de sol",pts:100,qty:15};
+    var pz2={id:uid(),name:"Garrafa de água",pts:60,qty:25};
+    var pz3={id:uid(),name:"Mochila",pts:250,qty:8};
+    var pz4={id:uid(),name:"Vinho",pts:200,qty:10};
+    await dbUpsertPrize(camp1.id,pz1);await dbUpsertPrize(camp1.id,pz2);await dbUpsertPrize(camp1.id,pz3);await dbUpsertPrize(camp1.id,pz4);
+    await dbInsertLedger(camp1.id,{id:uid(),type:"credito",referrer:"Bruno",referred:"Carlos",pts:100,d:t,nt:""});
+    await dbInsertLedger(camp1.id,{id:uid(),type:"credito",referrer:"Ana",referred:"Pedro",pts:100,d:t,nt:""});
+    await dbInsertLedger(camp1.id,{id:uid(),type:"credito",referrer:"Bruno",referred:"Julia",pts:100,d:t,nt:""});
+  }
+  // Recarrega tudo do banco para garantir consistência total
+  await loadS();
 }
 
 // ═══ TOAST ═══
@@ -524,7 +620,7 @@ function openItemM(eid){
 }
 function vrow(l,q,i){return'<div class="vr" id="VR'+i+'"><input class="inp vl" placeholder="Ex: P, M, G" value="'+l+'"><input class="inp vq" type="number" min="0" value="'+q+'" placeholder="Qtd" style="width:90px;flex:0 0 90px;text-align:center"><button class="bico vdel" type="button">'+ic("scissors",13)+"</button></div>";}
 function attVdel(){document.querySelectorAll(".vdel").forEach(function(b){b.onclick=function(){b.closest(".vr").remove();};});}
-function saveItem(){
+async function saveItem(){
   var n=document.getElementById("IM_name").value.trim();if(!n){toast("Informe o nome","er");return;}
   var ls=[].slice.call(document.querySelectorAll(".vl")).map(function(e){return e.value.trim();}).filter(Boolean);
   var qs=[].slice.call(document.querySelectorAll(".vq")).map(function(e){return parseInt(e.value)||0;});
@@ -534,11 +630,13 @@ function saveItem(){
   var sc=isM?(document.getElementById("IM_sc").value||null):null;
   var pay={n:n,cid:cid,cost:parseFloat(document.getElementById("IM_cost").value)||0,sale:parseFloat(document.getElementById("IM_sale").value)||0,v:ls.map(function(l,i){return{l:l,q:qs[i]||0};}),sc:sc};
   var eid=document.getElementById("IM_eid").value;
-  if(eid){var idx=S.items.findIndex(function(i){return i.id===eid;});S.items[idx]=Object.assign({},S.items[idx],pay);toast("Item atualizado!");}
-  else{S.items.unshift(Object.assign({id:uid(),at:tod()},pay));toast("Item adicionado!");}
-  saveS();closeM();rAll();
+  var finalItem;
+  if(eid){var idx=S.items.findIndex(function(i){return i.id===eid;});S.items[idx]=Object.assign({},S.items[idx],pay);finalItem=S.items[idx];toast("Item atualizado!");}
+  else{finalItem=Object.assign({id:uid(),at:tod()},pay);S.items.unshift(finalItem);toast("Item adicionado!");}
+  closeM();rAll();
+  await dbUpsertItem(finalItem);
 }
-function delItem(id){if(!confirm("Excluir este item?"))return;S.items=S.items.filter(function(i){return i.id!==id;});S.txns=S.txns.filter(function(t){return t.iid!==id;});saveS();toast("Item excluído");rAll();}
+async function delItem(id){if(!confirm("Excluir este item?"))return;S.items=S.items.filter(function(i){return i.id!==id;});S.txns=S.txns.filter(function(t){return t.iid!==id;});toast("Item excluído");rAll();await dbDeleteItem(id);}
 
 // ═══ TX MODAL ═══
 function openTxM(iid,tp){
@@ -550,15 +648,18 @@ function openTxM(iid,tp){
   document.getElementById("TXO").addEventListener("click",function(e){if(e.target===this)closeM();});
   function upd(){var q=parseInt(document.getElementById("TX_q").value)||0,v=parseFloat(document.getElementById("TX_val").value)||0,p=document.getElementById("TX_prev");if(!isIn&&q>0&&v>0){var tot=q*v,mg=q*(v-item.cost);p.innerHTML='<div style="background:rgba(16,185,129,.07);border:1px solid rgba(16,185,129,.2);border-radius:10px;padding:10px;font-size:12px;margin-top:8px">💰 Total: <strong style="color:var(--ok)">'+fC(tot)+'</strong>'+(item.cost>0?' · Margem: <strong style="color:'+(mg>=0?"var(--ok)":"var(--er)")+'">'+fC(mg)+'</strong>':"")+'</div>';}else p.innerHTML="";}
   document.getElementById("TX_q").addEventListener("input",upd);document.getElementById("TX_val").addEventListener("input",upd);
-  document.getElementById("TX_save").addEventListener("click",function(){
+  document.getElementById("TX_save").addEventListener("click",async function(){
     var vl=document.getElementById("TX_v").value,q=parseInt(document.getElementById("TX_q").value)||0,uv=parseFloat(document.getElementById("TX_val").value)||0,p=document.getElementById("TX_p").value.trim(),d=document.getElementById("TX_d").value,nt=document.getElementById("TX_nt").value.trim();
     if(!p){toast(isIn?"Informe o fornecedor":"Informe o cliente","er");return;}
     if(q<=0){toast("Quantidade inválida","er");return;}
     var v=item.v.find(function(x){return x.l===vl;});
     if(!isIn&&v.q<q){toast("Estoque insuficiente. Disponível: "+v.q,"er");return;}
     item.v=item.v.map(function(x){return x.l===vl?Object.assign({},x,{q:isIn?x.q+q:x.q-q}):x;});
-    S.txns.push({id:uid(),tp:tp,iid:iid,vl:vl,q:q,uv:uv,p:p,d:d,nt:nt});
-    saveS();closeM();toast(isIn?"Pedido recebido!":"Venda registrada!");rAll();
+    var newTx={id:uid(),tp:tp,iid:iid,vl:vl,q:q,uv:uv,p:p,d:d,nt:nt};
+    S.txns.push(newTx);
+    closeM();toast(isIn?"Pedido recebido!":"Venda registrada!");rAll();
+    await dbInsertTx(newTx);
+    await dbUpdateItemVariants(item.id,item.v);
   });
 }
 
@@ -573,11 +674,13 @@ function rTxD(){
     document.getElementById("TD_close").addEventListener("click",closeM);
     document.getElementById("TDO").addEventListener("click",function(e){if(e.target===this)closeM();});
     document.getElementById("ED_cancel").addEventListener("click",function(){TDedit=false;rTxD();});
-    document.getElementById("ED_save").addEventListener("click",function(){
+    document.getElementById("ED_save").addEventListener("click",async function(){
       var nq=parseInt(document.getElementById("ED_q").value)||0,nv=parseFloat(document.getElementById("ED_v").value)||0,np=document.getElementById("ED_p").value.trim(),nd=document.getElementById("ED_d").value,nn=document.getElementById("ED_n").value.trim();
       if(nq<=0){toast("Quantidade inválida","er");return;}if(!np){toast("Informe o nome","er");return;}
       if(item){var diff=isIn?(nq-t.q):(t.q-nq);item.v=item.v.map(function(v){return v.l===t.vl?Object.assign({},v,{q:v.q+diff}):v;});var vx=item.v.find(function(v){return v.l===t.vl;});if(!isIn&&vx&&vx.q<0){toast("Estoque ficaria negativo","er");item.v=item.v.map(function(v){return v.l===t.vl?Object.assign({},v,{q:v.q-diff}):v;});return;}}
-      t.q=nq;t.uv=nv;t.p=np;t.d=nd;t.nt=nn;saveS();TDedit=false;rTxD();rAll();toast("Movimentação atualizada!");
+      t.q=nq;t.uv=nv;t.p=np;t.d=nd;t.nt=nn;TDedit=false;rTxD();rAll();toast("Movimentação atualizada!");
+      await dbUpdateTx(t);
+      if(item)await dbUpdateItemVariants(item.id,item.v);
     });
   } else {
     openM('<div class="mover" id="TDO"><div class="modal mxl"><div class="mhdr"><span class="mtitle">Detalhes da movimentação</span><div style="display:flex;gap:6px"><button class="btn btn-s bsm" id="TD_edit">'+ic("edit",13)+" Editar</button><button class=\"bico\" id=\"TD_close\">✕</button></div></div><div class=\"dhdr\"><div class=\"txic "+(isIn?"in":"out")+'" style="width:42px;height:42px;border-radius:10px;flex-shrink:0">'+ic(isIn?"zap":"heart",18)+'</div><div><div style="font-size:16px;font-weight:800;color:var(--tx);margin-bottom:4px">'+(item?item.n:"Item removido")+'</div><div style="display:flex;gap:8px;flex-wrap:wrap"><span class="badge '+(isIn?"b-er":"b-ok")+'">'+(isIn?"Entrada":"Venda")+'</span>'+(t.vl?'<span class="badge b-mu">'+t.vl+"</span>":"")+(item&&item.sc?'<span class="badge b-ac">'+item.sc+"</span>":"")+'</div></div></div><div class="dgrid"><div class="drow"><div class="dkey">'+(isIn?"Fornecedor":"Cliente")+'</div><div class="dval">'+t.p+'</div></div><div class="drow"><div class="dkey">Data</div><div class="dval">'+fD(t.d)+'</div></div><div class="drow"><div class="dkey">Quantidade</div><div class="dval">'+t.q+" unidade"+(t.q!==1?"s":"")+'</div></div><div class="drow"><div class="dkey">Valor unitário</div><div class="dval">'+fC(t.uv)+'</div></div><div class="drow"><div class="dkey">Categoria</div><div class="dval">'+(cat?cat.n:"—")+'</div></div><div class="drow"><div class="dkey">Variante</div><div class="dval">'+t.vl+'</div></div>'+(t.nt?'<div class="drowf"><div class="dkey">Observação</div><div class="dval" style="font-weight:400;color:var(--txs)">'+t.nt+'</div></div>':"")+'<div class="dtot"><div><div style="font-size:11px;font-weight:700;color:var(--txm);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Valor total</div><div style="font-size:24px;font-weight:800;color:'+(isIn?"var(--er)":"var(--ok)")+'">'+( isIn?"-":"+")+fC(tot)+'</div></div>'+(!isIn&&mg!==null?'<div style="text-align:right"><div style="font-size:11px;font-weight:700;color:var(--txm);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Margem</div><div style="font-size:20px;font-weight:800;color:'+(mg>=0?"var(--ok)":"var(--er)")+'">'+fC(mg)+"</div></div>":"")+'</div></div><div class="mftr"><button class="btn btn-s" id="TD_closebtn">Fechar</button></div></div></div>');
@@ -629,12 +732,13 @@ function catIrow(item){
   var tot=tQ(item.v),low=tot<=3;
   var vb=item.v.map(function(v){return'<span class="badge '+(v.q===0?"b-er":v.q<=3?"b-wn":"b-mu")+'" style="font-size:10px">'+v.l+": "+v.q+"</span>";}).join('');
   return'<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--bd);transition:background .12s"><div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13px;color:var(--tx);margin-bottom:4px">'+item.n+'</div><div style="display:flex;flex-wrap:wrap;gap:4px">'+vb+'</div></div><div style="text-align:right;margin:0 12px;flex-shrink:0"><div style="font-size:11px;color:var(--txm)">Custo / Venda</div><div style="font-size:12px;font-weight:600;color:var(--txs)">'+fC(item.cost)+" / "+fC(item.sale)+'</div></div><div style="display:flex;gap:5px;flex-shrink:0"><button class="bico" data-ia="edit" data-id="'+item.id+'" style="color:var(--ac2)" title="Editar">'+ic("edit",13)+'</button><button class="bico" data-ia="tog" data-id="'+item.id+'" title="Edição rápida">'+ic("tag",13)+"</button></div></div><div id=\"IE"+item.id+"\" style=\"display:none;padding:0 16px 12px\"><div class=\"ie\"><div><div class=\"flbl\" style=\"margin-bottom:4px\">Custo (R$)</div><input class=\"inp\" id=\"IEC"+item.id+"\" type=\"number\" step=\"0.01\" min=\"0\" value=\""+item.cost+"\"></div><div><div class=\"flbl\" style=\"margin-bottom:4px\">Venda (R$)</div><input class=\"inp\" id=\"IES"+item.id+"\" type=\"number\" step=\"0.01\" min=\"0\" value=\""+item.sale+"\"></div><div><div class=\"flbl\" style=\"margin-bottom:4px\">Variantes</div>"+item.v.map(function(v,vi){return'<div style="display:flex;gap:6px;align-items:center;margin-bottom:4px"><span style="font-size:11px;color:var(--txm);min-width:28px">'+v.l+'</span><input class="inp" id="IEV'+item.id+'_'+vi+'" type="number" min="0" value="'+v.q+'" style="text-align:center;width:70px"></div>';}).join('')+"</div></div><div style=\"display:flex;gap:8px;margin-top:8px;justify-content:flex-end\"><button class=\"btn btn-s bsm\" data-ia=\"tog\" data-id=\""+item.id+"\">Cancelar</button><button class=\"btn btn-p bsm\" data-ia=\"save\" data-id=\""+item.id+"\">"+ic("tag",12)+" Salvar</button></div></div>";}
-function saveIE(iid,cid){
+async function saveIE(iid,cid){
   var item=gI(iid);if(!item)return;
   item.cost=parseFloat(document.getElementById("IEC"+iid).value)||0;
   item.sale=parseFloat(document.getElementById("IES"+iid).value)||0;
   item.v=item.v.map(function(v,vi){var el=document.getElementById("IEV"+iid+"_"+vi);return Object.assign({},v,{q:el?parseInt(el.value)||0:v.q});});
-  saveS();rAll();closeM();if(cid)openCatDet(cid);toast("Item atualizado!");
+  rAll();closeM();if(cid)openCatDet(cid);toast("Item atualizado!");
+  await dbUpsertItem(item);
 }
 
 // ═══ CAT MODAL ═══
@@ -653,14 +757,16 @@ function openCatM(eid){
   document.getElementById("CM_save").addEventListener("click",saveCat);
 }
 function updCP(){var p=document.getElementById("CM_pi");if(p){p.innerHTML=ic(sIco,20,sCl);p.style.background=sCl+"22";p.style.border="1px solid "+sCl+"44";}}
-function saveCat(){
+async function saveCat(){
   var n=document.getElementById("CM_n").value.trim();if(!n){toast("Informe o nome","er");return;}
   var eid=document.getElementById("CM_eid").value;
-  if(eid){var idx=S.cats.findIndex(function(c){return c.id===eid;});S.cats[idx]=Object.assign({},S.cats[idx],{n:n,ic:sIco,cl:sCl});toast("Categoria atualizada!");}
-  else{S.cats.push({id:uid(),n:n,ic:sIco,cl:sCl});toast("Categoria criada!");}
-  saveS();closeM();rCats();
+  var finalCat;
+  if(eid){var idx=S.cats.findIndex(function(c){return c.id===eid;});S.cats[idx]=Object.assign({},S.cats[idx],{n:n,ic:sIco,cl:sCl});finalCat=S.cats[idx];toast("Categoria atualizada!");}
+  else{finalCat={id:uid(),n:n,ic:sIco,cl:sCl};S.cats.push(finalCat);toast("Categoria criada!");}
+  closeM();rCats();
+  await dbUpsertCat(finalCat);
 }
-function delCat(id){var cnt=S.items.filter(function(i){return i.cid===id;}).length;if(!confirm("Excluir esta categoria?"+(cnt>0?" "+cnt+" item(s) ficarão sem categoria.":"")))return;S.cats=S.cats.filter(function(c){return c.id!==id;});saveS();toast("Categoria excluída");rCats();}
+async function delCat(id){var cnt=S.items.filter(function(i){return i.cid===id;}).length;if(!confirm("Excluir esta categoria?"+(cnt>0?" "+cnt+" item(s) ficarão sem categoria.":"")))return;S.cats=S.cats.filter(function(c){return c.id!==id;});toast("Categoria excluída");rCats();await dbDeleteCat(id);}
 
 // ═══ PREÇOS ═══
 function rPrecos(){
@@ -668,9 +774,10 @@ function rPrecos(){
   SC.forEach(function(s){if(!S.cp[s])S.cp[s]={cost:0,sale:0};});
   document.getElementById("PR_body").innerHTML=SC.map(function(s){var p=S.cp[s]||{cost:0,sale:0},k=s.replace(/[^a-z0-9]/gi,"_");return'<tr><td style="font-weight:600;color:var(--tx);font-size:13px">'+s+'</td><td><div style="position:relative;max-width:160px"><span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--txm);font-size:12px;pointer-events:none">R$</span><input class="inp" id="PC'+k+'" type="number" step="0.01" min="0" value="'+(p.cost||"")+'" placeholder="0,00" style="padding-left:28px"></div></td><td><div style="position:relative;max-width:160px"><span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--txm);font-size:12px;pointer-events:none">R$</span><input class="inp" id="PS'+k+'" type="number" step="0.01" min="0" value="'+(p.sale||"")+'" placeholder="0,00" style="padding-left:28px"></div></td></tr>';}).join('');
 }
-function savePrecos(){
+async function savePrecos(){
   SC.forEach(function(s){var k=s.replace(/[^a-z0-9]/gi,"_");var ce=document.getElementById("PC"+k),se=document.getElementById("PS"+k);S.cp[s]={cost:ce?parseFloat(ce.value)||0:0,sale:se?parseFloat(se.value)||0:0};});
-  saveS();toast("Preços salvos!");
+  toast("Preços salvos!");
+  for(var i=0;i<SC.length;i++){await dbUpsertCP(SC[i],S.cp[SC[i]]);}
 }
 
 // ═══ MATERIAL ═══
@@ -691,11 +798,12 @@ function openMatM(tp){
   document.getElementById("MM_close").addEventListener("click",closeM);
   document.getElementById("MM_cancel").addEventListener("click",closeM);
   document.getElementById("MMO").addEventListener("click",function(e){if(e.target===this)closeM();});
-  document.getElementById("MM_save").addEventListener("click",function(){
+  document.getElementById("MM_save").addEventListener("click",async function(){
     var tp=document.getElementById("MM_tp").value,isC=tp==="compra",c=document.getElementById("MM_c").value,q=parseInt(document.getElementById("MM_q").value)||0,uv=isC?parseFloat(document.getElementById("MM_v").value)||0:0,nt=isC?"":document.getElementById("MM_v").value.trim(),p=document.getElementById("MM_p").value.trim(),d=document.getElementById("MM_d").value;
     if(q<=0){toast("Informe a quantidade","er");return;}if(!p){toast("Informe o "+(isC?"fornecedor":"destino"),"er");return;}
     if(!isC){var comp=S.mm.filter(function(m){return m.tp==="compra"&&m.c===c;}).reduce(function(s,m){return s+m.q;},0),dist=S.mm.filter(function(m){return m.tp==="dist"&&m.c===c;}).reduce(function(s,m){return s+m.q;},0);if(dist+q>comp){toast("Saldo insuficiente. Disponível: "+(comp-dist),"er");return;}}
-    if(!S.mm)S.mm=[];S.mm.push({id:uid(),tp:tp,c:c,q:q,uv:uv,p:p,d:d,nt:nt});saveS();closeM();toast(isC?"Compra registrada!":"Distribuição registrada!");rMat();
+    if(!S.mm)S.mm=[];var newMM={id:uid(),tp:tp,c:c,q:q,uv:uv,p:p,d:d,nt:nt};S.mm.push(newMM);closeM();toast(isC?"Compra registrada!":"Distribuição registrada!");rMat();
+    await dbInsertMM(newMM);
   });
 }
 
@@ -731,15 +839,17 @@ function openCampM(eid){
   document.getElementById("CAM_close").addEventListener("click",closeM);
   document.getElementById("CAM_cancel").addEventListener("click",closeM);
   document.getElementById("CAMO").addEventListener("click",function(e){if(e.target===this)closeM();});
-  document.getElementById("CAM_save").addEventListener("click",function(){
+  document.getElementById("CAM_save").addEventListener("click",async function(){
     var n=document.getElementById("CAM_n").value.trim();if(!n){toast("Informe o nome","er");return;}
     var loy=document.getElementById("CAM_loy").checked;
     var pay={n:n,desc:document.getElementById("CAM_d").value.trim(),tp:document.getElementById("CAM_tp").value,vis:document.getElementById("CAM_vis").value,st:document.getElementById("CAM_st").value,en:document.getElementById("CAM_en").value,gf:parseFloat(document.getElementById("CAM_gf").value)||0,gq:parseInt(document.getElementById("CAM_gq").value)||0,loy:loy};
     if(!S.camps)S.camps=[];
     var eid=document.getElementById("CAM_eid").value;
-    if(eid){var idx=S.camps.findIndex(function(c){return c.id===eid;});S.camps[idx]=Object.assign({},S.camps[idx],pay);toast("Campanha atualizada!");}
-    else{S.camps.push(Object.assign({id:uid(),movs:[],prizes:[],ledger:[]},pay));toast("Campanha criada!");}
-    saveS();closeM();rCamp();
+    var finalCamp;
+    if(eid){var idx=S.camps.findIndex(function(c){return c.id===eid;});S.camps[idx]=Object.assign({},S.camps[idx],pay);finalCamp=S.camps[idx];toast("Campanha atualizada!");}
+    else{finalCamp=Object.assign({id:uid(),movs:[],prizes:[],ledger:[]},pay);S.camps.push(finalCamp);toast("Campanha criada!");}
+    closeM();rCamp();
+    await dbUpsertCamp(finalCamp);
   });
 }
 
@@ -841,16 +951,17 @@ function openCampMovM(cid){
   document.getElementById("CMV_cancel").addEventListener("click",closeM);
   document.getElementById("CMVO").addEventListener("click",function(e){if(e.target===this)closeM();});
   document.getElementById("CMV_tp").addEventListener("change",function(){var f=this.value==="entrada_fisica"||this.value==="saida_fisica";document.getElementById("CMV_fisf").style.display=f?"block":"none";});
-  document.getElementById("CMV_save").addEventListener("click",function(){
+  document.getElementById("CMV_save").addEventListener("click",async function(){
     var cid2=document.getElementById("CMV_cid").value,c=S.camps.find(function(x){return x.id===cid2;});if(!c)return;
     var tp=document.getElementById("CMV_tp").value,fis=tp==="entrada_fisica"||tp==="saida_fisica";
     var it=fis?document.getElementById("CMV_it").value.trim():"",q=fis?parseInt(document.getElementById("CMV_q").value)||1:1,uv=parseFloat(document.getElementById("CMV_v").value)||0,p=document.getElementById("CMV_p").value.trim(),d=document.getElementById("CMV_d").value,nt=document.getElementById("CMV_nt").value.trim();
     if(!p){toast("Informe o responsável","er");return;}
-    if(!c.movs)c.movs=[];c.movs.push({id:uid(),tp:tp,it:it,q:q,uv:uv,p:p,d:d,nt:nt});
-    saveS();closeM();toast("Movimentação registrada!");rCamp();
+    if(!c.movs)c.movs=[];var newMov={id:uid(),tp:tp,it:it,q:q,uv:uv,p:p,d:d,nt:nt};c.movs.push(newMov);
+    closeM();toast("Movimentação registrada!");rCamp();
+    await dbInsertCmov(cid2,newMov);
   });
 }
-function delCamp(id){if(!confirm("Excluir esta campanha?"))return;S.camps=S.camps.filter(function(c){return c.id!==id;});saveS();toast("Campanha excluída");rCamp();}
+async function delCamp(id){if(!confirm("Excluir esta campanha?"))return;S.camps=S.camps.filter(function(c){return c.id!==id;});toast("Campanha excluída");rCamp();await dbDeleteCamp(id);}
 
 // ═══ MODAL: Adicionar/editar brinde ═══
 function openPrizeM(cid,pid){
@@ -861,21 +972,24 @@ function openPrizeM(cid,pid){
   document.getElementById("PZ_close").addEventListener("click",closeM);
   document.getElementById("PZ_cancel").addEventListener("click",closeM);
   document.getElementById("PZO").addEventListener("click",function(e){if(e.target===this)closeM();});
-  document.getElementById("PZ_save").addEventListener("click",function(){
+  document.getElementById("PZ_save").addEventListener("click",async function(){
     var name=document.getElementById("PZ_name").value.trim();if(!name){toast("Informe o nome do brinde","er");return;}
     var pts=parseInt(document.getElementById("PZ_pts").value)||0;if(pts<=0){toast("Informe o custo em pontos","er");return;}
     var qty=parseInt(document.getElementById("PZ_qty").value)||0;
     var epid=document.getElementById("PZ_pid").value;
-    if(epid){var idx=c.prizes.findIndex(function(p){return p.id===epid;});c.prizes[idx]={id:epid,name:name,pts:pts,qty:qty};toast("Brinde atualizado!");}
-    else{c.prizes.push({id:uid(),name:name,pts:pts,qty:qty});toast("Brinde adicionado!");}
-    saveS();closeM();openCampDet(cid);
+    var finalPrize;
+    if(epid){var idx=c.prizes.findIndex(function(p){return p.id===epid;});finalPrize={id:epid,name:name,pts:pts,qty:qty};c.prizes[idx]=finalPrize;toast("Brinde atualizado!");}
+    else{finalPrize={id:uid(),name:name,pts:pts,qty:qty};c.prizes.push(finalPrize);toast("Brinde adicionado!");}
+    closeM();openCampDet(cid);
+    await dbUpsertPrize(cid,finalPrize);
   });
 }
-function delPrize(cid,pid){
+async function delPrize(cid,pid){
   var c=S.camps.find(function(x){return x.id===cid;});if(!c)return;
   if(!confirm("Excluir este brinde do estoque?"))return;
   c.prizes=c.prizes.filter(function(p){return p.id!==pid;});
-  saveS();openCampDet(cid);toast("Brinde excluído");
+  openCampDet(cid);toast("Brinde excluído");
+  await dbDeletePrize(pid);
 }
 
 // ═══ MODAL: Registrar indicação convertida (+pontos) ═══
@@ -884,7 +998,7 @@ function openAddPtsM(cid){
   document.getElementById("AP_close").addEventListener("click",closeM);
   document.getElementById("AP_cancel").addEventListener("click",closeM);
   document.getElementById("APO").addEventListener("click",function(e){if(e.target===this)closeM();});
-  document.getElementById("AP_save").addEventListener("click",function(){
+  document.getElementById("AP_save").addEventListener("click",async function(){
     var cid2=document.getElementById("AP_cid").value,c=S.camps.find(function(x){return x.id===cid2;});if(!c)return;
     var referrer=document.getElementById("AP_referrer").value.trim();
     var referred=document.getElementById("AP_referred").value.trim();
@@ -895,8 +1009,10 @@ function openAddPtsM(cid){
     if(!referred){toast("Informe quem foi indicado","er");return;}
     if(pts<=0){toast("Informe os pontos","er");return;}
     if(!c.ledger)c.ledger=[];
-    c.ledger.push({id:uid(),type:"credito",referrer:referrer,referred:referred,pts:pts,d:d,nt:nt});
-    saveS();closeM();toast(referrer+" ganhou "+pts+" pontos!");openCampDet(cid2);
+    var entry={id:uid(),type:"credito",referrer:referrer,referred:referred,pts:pts,d:d,nt:nt};
+    c.ledger.push(entry);
+    closeM();toast(referrer+" ganhou "+pts+" pontos!");openCampDet(cid2);
+    await dbInsertLedger(cid2,entry);
   });
 }
 
@@ -927,7 +1043,7 @@ function openRedeemM(cid){
   document.getElementById("RD_student").addEventListener("change",updPrev);
   document.getElementById("RD_prize").addEventListener("change",updPrev);
   updPrev();
-  document.getElementById("RD_save").addEventListener("click",function(){
+  document.getElementById("RD_save").addEventListener("click",async function(){
     var cid2=document.getElementById("RD_cid").value,c2=S.camps.find(function(x){return x.id===cid2;});if(!c2)return;
     var sName=document.getElementById("RD_student").value;
     var pSel=document.getElementById("RD_prize");
@@ -940,8 +1056,11 @@ function openRedeemM(cid){
     var d=document.getElementById("RD_d").value;
     prize.qty-=1;
     if(!c2.ledger)c2.ledger=[];
-    c2.ledger.push({id:uid(),type:"resgate",referrer:sName,prizeId:pid,prizeName:prize.name,pts:-prize.pts,d:d,nt:""});
-    saveS();closeM();toast(sName+" retirou: "+prize.name+"!");openCampDet(cid2);
+    var entry={id:uid(),type:"resgate",referrer:sName,prizeId:pid,prizeName:prize.name,pts:-prize.pts,d:d,nt:""};
+    c2.ledger.push(entry);
+    closeM();toast(sName+" retirou: "+prize.name+"!");openCampDet(cid2);
+    await dbUpdatePrizeQty(pid,prize.qty);
+    await dbInsertLedger(cid2,entry);
   });
 }
 
@@ -962,22 +1081,30 @@ function hCont(t){
 }
 
 // ═══ LOGIN ═══
-function doLogin(){
+async function doLogin(){
   if(!selU){toast("Selecione uma unidade","er");return;}
   var pw=document.getElementById("L_pw").value,acc=ACC[selU];
   if(!acc||pw!==acc.pw){toast("Senha incorreta","er");return;}
   CU=selU;
+  var btn=document.getElementById("L_enter");
+  btn.disabled=true;btn.innerHTML="⏳ Conectando...";
+  await loadS();
+  if(S.items.length===0&&S.cats.length===0){
+    await seedToSupabase();
+  }
   document.getElementById("loginPage").style.display="none";
   document.getElementById("mainApp").style.display="flex";
   document.getElementById("FAB").style.display="flex";
   document.getElementById("TB_unit").textContent=acc.n;
   document.getElementById("A_avatar").textContent=acc.av;
   document.getElementById("SB_unit").textContent=acc.n;
-  loadS();seed();rAll();
+  rAll();
+  btn.disabled=false;btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Entrar na plataforma';
   toast("Bem-vindo, "+acc.n+"!");
 }
 function doLogout(){
   CU=null;selU=null;
+  S={cats:[],items:[],txns:[],cp:{},mm:[],camps:[]};
   document.getElementById("mainApp").style.display="none";
   document.getElementById("FAB").style.display="none";
   document.getElementById("loginPage").style.display="flex";
