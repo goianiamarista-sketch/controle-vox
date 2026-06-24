@@ -7,6 +7,7 @@
 <title>Controle Vox</title>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 [data-theme="dark"]{--bg:#09090F;--sf:#111118;--sf2:#16161F;--bd:#1E1E2E;--bd2:#2A2A3E;--ac:#6366F1;--ac2:#818CF8;--tx:#F1F5F9;--txs:#94A3B8;--txm:#64748B;--ok:#10B981;--wn:#F59E0B;--er:#EF4444;--mbg:rgba(17,17,24,.98);--ovl:rgba(0,0,0,.75);--rh:rgba(22,22,31,.5)}
@@ -288,6 +289,7 @@ tbody tr:hover td{background:var(--rh)}
       <div class="ni" id="N_precos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Preços por Curso</div>
       <div class="ni" id="N_mat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>Material Didático</div>
       <div class="ni" id="N_camp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Campanhas Vox2You</div>
+      <div class="ni" id="N_rel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>Relatório Mensal</div>
     </nav>
     <div class="sfooter">Controle Vox v3.0</div>
   </aside>
@@ -345,6 +347,33 @@ tbody tr:hover td{background:var(--rh)}
         <div class="mgrid" id="CAM_kpis" style="grid-template-columns:repeat(4,1fr);margin-bottom:20px"></div>
         <div class="filters"><div class="ftabs"><button class="ft on" id="CF_todas">Todas</button><button class="ft" id="CF_and">Em andamento</button><button class="ft" id="CF_pla">Planejadas</button><button class="ft" id="CF_enc">Encerradas</button></div></div>
         <div class="camgrid" id="CAM_grid"></div>
+      </div>
+      <div id="P_rel" class="page">
+        <div class="ph"><div><h1 class="ptitle">Relatório Mensal</h1><p class="psub" id="REL_sub">Entradas e saídas por mês — Estoque, Material Didático e Campanhas</p></div><button class="btn btn-p" id="REL_export"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Exportar para Excel</button></div>
+        <div class="filters">
+          <select class="inp" id="REL_month" style="max-width:160px"></select>
+          <select class="inp" id="REL_year" style="max-width:120px"></select>
+          <select class="inp" id="REL_source" style="max-width:200px">
+            <option value="all">Todas as áreas</option>
+            <option value="estoque">Somente Estoque</option>
+            <option value="material">Somente Material Didático</option>
+            <option value="campanhas">Somente Campanhas</option>
+          </select>
+          <select class="inp" id="REL_cat" style="max-width:200px"><option value="">Todas as categorias</option></select>
+        </div>
+        <div class="mgrid" id="REL_kpis" style="grid-template-columns:repeat(4,1fr)"></div>
+        <div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">
+          <div style="padding:14px 18px;border-bottom:1px solid var(--bd);font-size:13px;font-weight:700;color:var(--tx)">📦 Estoque — Entradas e Saídas</div>
+          <div class="tw" style="border:none;border-radius:0"><table><thead><tr><th>Item</th><th>Categoria</th><th>Entradas (un.)</th><th>Saídas (un.)</th><th>Saldo do mês</th></tr></thead><tbody id="REL_estBody"></tbody></table></div>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">
+          <div style="padding:14px 18px;border-bottom:1px solid var(--bd);font-size:13px;font-weight:700;color:var(--tx)">📘 Material Didático — Compras e Distribuições</div>
+          <div class="tw" style="border:none;border-radius:0"><table><thead><tr><th>Curso</th><th>Comprado (un.)</th><th>Distribuído (un.)</th><th>Saldo do mês</th></tr></thead><tbody id="REL_matBody"></tbody></table></div>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden">
+          <div style="padding:14px 18px;border-bottom:1px solid var(--bd);font-size:13px;font-weight:700;color:var(--tx)">🎯 Campanhas — Movimentações do mês</div>
+          <div class="tw" style="border:none;border-radius:0"><table><thead><tr><th>Campanha</th><th>Tipo</th><th>Entradas</th><th>Saídas</th></tr></thead><tbody id="REL_campBody"></tbody></table></div>
+        </div>
       </div>
     </div>
   </div>
@@ -540,10 +569,10 @@ function openM(html){closeM();var d=document.createElement("div");d.id="MACTIVE"
 function closeM(){var m=document.getElementById("MACTIVE");if(m)m.remove();}
 
 // ═══ NAVIGATION ═══
-var pages=["dashboard","estoque","movs","cats","precos","mat","camp"];
-var navMap={dashboard:"N_dashboard",estoque:"N_estoque",movs:"N_movs",cats:"N_cats",precos:"N_precos",mat:"N_mat",camp:"N_camp"};
-var pageMap={dashboard:"P_dashboard",estoque:"P_estoque",movs:"P_movs",cats:"P_cats",precos:"P_precos",mat:"P_mat",camp:"P_camp"};
-var renderMap={dashboard:rDash,estoque:rEst,movs:rMovs,cats:rCats,precos:rPrecos,mat:rMat,camp:rCamp};
+var pages=["dashboard","estoque","movs","cats","precos","mat","camp","rel"];
+var navMap={dashboard:"N_dashboard",estoque:"N_estoque",movs:"N_movs",cats:"N_cats",precos:"N_precos",mat:"N_mat",camp:"N_camp",rel:"N_rel"};
+var pageMap={dashboard:"P_dashboard",estoque:"P_estoque",movs:"P_movs",cats:"P_cats",precos:"P_precos",mat:"P_mat",camp:"P_camp",rel:"P_rel"};
+var renderMap={dashboard:rDash,estoque:rEst,movs:rMovs,cats:rCats,precos:rPrecos,mat:rMat,camp:rCamp,rel:rRel};
 
 function goTo(p){
   pages.forEach(function(x){
@@ -1064,6 +1093,148 @@ function openRedeemM(cid){
   });
 }
 
+// ═══ RELATÓRIO MENSAL ═══
+var MONTHS=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+function relPopulateFilters(){
+  var ms=document.getElementById("REL_month"),ys=document.getElementById("REL_year");
+  if(!ms.options.length){
+    ms.innerHTML=MONTHS.map(function(m,i){return'<option value="'+i+'">'+m+"</option>";}).join('');
+    var now=new Date();ms.value=now.getMonth();
+  }
+  if(!ys.options.length){
+    var curY=new Date().getFullYear();
+    var yrs=[];for(var y=curY-2;y<=curY+1;y++)yrs.push(y);
+    ys.innerHTML=yrs.map(function(y){return'<option value="'+y+'">'+y+"</option>";}).join('');
+    ys.value=curY;
+  }
+  var cf=document.getElementById("REL_cat");
+  cf.innerHTML='<option value="">Todas as categorias</option>'+S.cats.map(function(c){return'<option value="'+c.id+'">'+c.n+"</option>";}).join('');
+}
+function relInMonth(dateStr,month,year){
+  if(!dateStr)return false;
+  var d=new Date(dateStr+"T00:00:00");
+  return d.getMonth()===month&&d.getFullYear()===year;
+}
+function relGetFilters(){
+  var month=parseInt(document.getElementById("REL_month").value);
+  var year=parseInt(document.getElementById("REL_year").value);
+  var source=document.getElementById("REL_source").value;
+  var catId=document.getElementById("REL_cat").value;
+  return{month:month,year:year,source:source,catId:catId};
+}
+function relComputeEstoque(f){
+  var rows=[];
+  S.items.forEach(function(item){
+    if(f.catId&&item.cid!==f.catId)return;
+    var cat=gC(item.cid);
+    var txIn=S.txns.filter(function(t){return t.iid===item.id&&t.tp==="in"&&relInMonth(t.d,f.month,f.year);}).reduce(function(s,t){return s+t.q;},0);
+    var txOut=S.txns.filter(function(t){return t.iid===item.id&&t.tp==="out"&&relInMonth(t.d,f.month,f.year);}).reduce(function(s,t){return s+t.q;},0);
+    if(txIn===0&&txOut===0)return;
+    rows.push({item:item.n,cat:cat?cat.n:"—",entradas:txIn,saidas:txOut,saldo:txIn-txOut});
+  });
+  return rows;
+}
+function relComputeMaterial(f){
+  var rows=[];
+  var courses=Array.from(new Set((S.mm||[]).map(function(m){return m.c;})));
+  courses.forEach(function(c){
+    var comp=(S.mm||[]).filter(function(m){return m.c===c&&m.tp==="compra"&&relInMonth(m.d,f.month,f.year);}).reduce(function(s,m){return s+m.q;},0);
+    var dist=(S.mm||[]).filter(function(m){return m.c===c&&m.tp==="dist"&&relInMonth(m.d,f.month,f.year);}).reduce(function(s,m){return s+m.q;},0);
+    if(comp===0&&dist===0)return;
+    rows.push({course:c,comprado:comp,distribuido:dist,saldo:comp-dist});
+  });
+  return rows;
+}
+function relComputeCampanhas(f){
+  var rows=[];
+  (S.camps||[]).forEach(function(c){
+    var movs=c.movs||[];
+    var finIn=movs.filter(function(m){return m.tp==="entrada_fin"&&relInMonth(m.d,f.month,f.year);}).reduce(function(s,m){return s+m.q*m.uv;},0);
+    var finOut=movs.filter(function(m){return m.tp==="saida_fin"&&relInMonth(m.d,f.month,f.year);}).reduce(function(s,m){return s+m.q*m.uv;},0);
+    var fisIn=movs.filter(function(m){return m.tp==="entrada_fisica"&&relInMonth(m.d,f.month,f.year);}).reduce(function(s,m){return s+m.q;},0);
+    var fisOut=movs.filter(function(m){return m.tp==="saida_fisica"&&relInMonth(m.d,f.month,f.year);}).reduce(function(s,m){return s+m.q;},0);
+    if(finIn===0&&finOut===0&&fisIn===0&&fisOut===0)return;
+    rows.push({camp:c.n,tipo:{fisica:"🎁 Física",financeira:"💰 Financeira",ambas:"⚡ Ambas"}[c.tp],finIn:finIn,finOut:finOut,fisIn:fisIn,fisOut:fisOut});
+  });
+  return rows;
+}
+function rRel(){
+  relPopulateFilters();
+  var f=relGetFilters();
+  document.getElementById("REL_sub").textContent="Relatório de "+MONTHS[f.month]+" / "+f.year;
+
+  var estRows=f.source==="all"||f.source==="estoque"?relComputeEstoque(f):[];
+  var matRows=f.source==="all"||f.source==="material"?relComputeMaterial(f):[];
+  var campRows=f.source==="all"||f.source==="campanhas"?relComputeCampanhas(f):[];
+
+  // KPIs
+  var totIn=estRows.reduce(function(s,r){return s+r.entradas;},0)+matRows.reduce(function(s,r){return s+r.comprado;},0);
+  var totOut=estRows.reduce(function(s,r){return s+r.saidas;},0)+matRows.reduce(function(s,r){return s+r.distribuido;},0);
+  var campFinTotal=campRows.reduce(function(s,r){return s+r.finIn-r.finOut;},0);
+  var itemsAffected=estRows.length+matRows.length;
+  document.getElementById("REL_kpis").innerHTML=
+    mc("Total de entradas",totIn+" un.","zap","#3B82F6")+
+    mc("Total de saídas",totOut+" un.","heart","#EF4444")+
+    mc("Saldo de campanhas",fC(campFinTotal),"star",campFinTotal>=0?"#10B981":"#EF4444")+
+    mc("Itens com movimento",itemsAffected,"box","#6366F1");
+
+  // Estoque table
+  var eb=document.getElementById("REL_estBody");
+  eb.innerHTML=estRows.length===0?'<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--txm)">Nenhuma movimentação neste mês</td></tr>':estRows.map(function(r){return'<tr><td class="iname">'+r.item+'</td><td>'+r.cat+'</td><td style="color:var(--ok);font-weight:600">+'+r.entradas+'</td><td style="color:var(--er);font-weight:600">-'+r.saidas+'</td><td style="font-weight:700;color:'+(r.saldo>=0?"var(--ok)":"var(--er)")+'">'+(r.saldo>=0?"+":"")+r.saldo+"</td></tr>";}).join('');
+
+  // Material table
+  var mb=document.getElementById("REL_matBody");
+  mb.innerHTML=matRows.length===0?'<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--txm)">Nenhuma movimentação neste mês</td></tr>':matRows.map(function(r){return'<tr><td class="iname">'+r.course+'</td><td style="color:var(--ok);font-weight:600">+'+r.comprado+'</td><td style="color:var(--er);font-weight:600">-'+r.distribuido+'</td><td style="font-weight:700;color:'+(r.saldo>=0?"var(--ok)":"var(--er)")+'">'+(r.saldo>=0?"+":"")+r.saldo+"</td></tr>";}).join('');
+
+  // Campanhas table
+  var cb=document.getElementById("REL_campBody");
+  cb.innerHTML=campRows.length===0?'<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--txm)">Nenhuma movimentação neste mês</td></tr>':campRows.map(function(r){var parts=[];if(r.finIn>0||r.finOut>0)parts.push("💰 "+fC(r.finIn)+" / -"+fC(r.finOut));if(r.fisIn>0||r.fisOut>0)parts.push("📦 +"+r.fisIn+" / -"+r.fisOut);return'<tr><td class="iname">'+r.camp+'</td><td>'+r.tipo+'</td><td style="color:var(--ok);font-weight:600">'+(r.finIn>0?fC(r.finIn):"")+(r.fisIn>0?" +"+r.fisIn+" un.":"")+'</td><td style="color:var(--er);font-weight:600">'+(r.finOut>0?fC(r.finOut):"")+(r.fisOut>0?" -"+r.fisOut+" un.":"")+"</td></tr>";}).join('');
+}
+
+// ═══ EXPORTAÇÃO PARA EXCEL ═══
+function exportRelToExcel(){
+  if(typeof XLSX==="undefined"){toast("Biblioteca de exportação não carregou. Verifique sua conexão e recarregue a página.","er");return;}
+  var f=relGetFilters();
+  var estRows=relComputeEstoque(f);
+  var matRows=relComputeMaterial(f);
+  var campRows=relComputeCampanhas(f);
+  var monthLabel=MONTHS[f.month]+" "+f.year;
+  var unitLabel=ACC[CU]?ACC[CU].n:CU;
+
+  var wb=XLSX.utils.book_new();
+
+  // Aba Estoque
+  var estData=[["Relatório Mensal — "+unitLabel],["Período: "+monthLabel],[],
+    ["Item","Categoria","Entradas (un.)","Saídas (un.)","Saldo do mês"]];
+  estRows.forEach(function(r){estData.push([r.item,r.cat,r.entradas,r.saidas,r.saldo]);});
+  if(estRows.length===0)estData.push(["Nenhuma movimentação neste mês","","","",""]);
+  var wsEst=XLSX.utils.aoa_to_sheet(estData);
+  wsEst["!cols"]=[{wch:28},{wch:18},{wch:14},{wch:12},{wch:14}];
+  XLSX.utils.book_append_sheet(wb,wsEst,"Estoque");
+
+  // Aba Material Didático
+  var matData=[["Relatório Mensal — "+unitLabel],["Período: "+monthLabel],[],
+    ["Curso","Comprado (un.)","Distribuído (un.)","Saldo do mês"]];
+  matRows.forEach(function(r){matData.push([r.course,r.comprado,r.distribuido,r.saldo]);});
+  if(matRows.length===0)matData.push(["Nenhuma movimentação neste mês","","",""]);
+  var wsMat=XLSX.utils.aoa_to_sheet(matData);
+  wsMat["!cols"]=[{wch:28},{wch:16},{wch:16},{wch:14}];
+  XLSX.utils.book_append_sheet(wb,wsMat,"Material Didático");
+
+  // Aba Campanhas
+  var campData=[["Relatório Mensal — "+unitLabel],["Período: "+monthLabel],[],
+    ["Campanha","Tipo","Receita (R$)","Despesa (R$)","Itens entrados","Itens saídos"]];
+  campRows.forEach(function(r){campData.push([r.camp,r.tipo,r.finIn,r.finOut,r.fisIn,r.fisOut]);});
+  if(campRows.length===0)campData.push(["Nenhuma movimentação neste mês","","","","",""]);
+  var wsCamp=XLSX.utils.aoa_to_sheet(campData);
+  wsCamp["!cols"]=[{wch:24},{wch:18},{wch:14},{wch:14},{wch:14},{wch:14}];
+  XLSX.utils.book_append_sheet(wb,wsCamp,"Campanhas");
+
+  var fname="Relatorio_"+unitLabel.replace(/\s+/g,"_")+"_"+MONTHS[f.month]+"_"+f.year+".xlsx";
+  XLSX.writeFile(wb,fname);
+  toast("Planilha exportada: "+fname);
+}
+
 // ═══ HELP ═══
 var hTab="venda";
 function openHelp(){
@@ -1148,7 +1319,7 @@ document.addEventListener("DOMContentLoaded",function(){
   document.getElementById("FAB").addEventListener("click",openHelp);
 
   // NAV
-  [["N_dashboard","dashboard"],["N_estoque","estoque"],["N_movs","movs"],["N_cats","cats"],["N_precos","precos"],["N_mat","mat"],["N_camp","camp"]].forEach(function(p){
+  [["N_dashboard","dashboard"],["N_estoque","estoque"],["N_movs","movs"],["N_cats","cats"],["N_precos","precos"],["N_mat","mat"],["N_camp","camp"],["N_rel","rel"]].forEach(function(p){
     var el=document.getElementById(p[0]);
     if(el)el.addEventListener("click",function(){goTo(p[1]);});
   });
@@ -1163,6 +1334,11 @@ document.addEventListener("DOMContentLoaded",function(){
   document.getElementById("MAT_comp").addEventListener("click",function(){openMatM("compra");});
   document.getElementById("MAT_dist").addEventListener("click",function(){openMatM("dist");});
   document.getElementById("CAM_new").addEventListener("click",function(){openCampM();});
+  document.getElementById("REL_export").addEventListener("click",exportRelToExcel);
+  document.getElementById("REL_month").addEventListener("change",rRel);
+  document.getElementById("REL_year").addEventListener("change",rRel);
+  document.getElementById("REL_source").addEventListener("change",rRel);
+  document.getElementById("REL_cat").addEventListener("change",rRel);
 
   // TX FILTERS
   document.getElementById("M_search").addEventListener("input",rMovs);
